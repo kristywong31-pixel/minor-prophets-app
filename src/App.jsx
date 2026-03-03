@@ -956,7 +956,7 @@ export default function App() {
     <div className="pb-24 px-4 pt-6">
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-xl font-bold" style={{ color: theme.textMain }}>
-          先知性群體 · Threads
+          Prophetic Community
         </h2>
         <button
           type="button"
