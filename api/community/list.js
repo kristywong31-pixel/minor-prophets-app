@@ -1,6 +1,6 @@
-const { getPool } = require("../_lib/db.cjs");
-const { json, methodNotAllowed } = require("../_lib/http.cjs");
-const { getUserIdFromRequest } = require("../_lib/auth.cjs");
+const { getPool } = require("../_lib/db");
+const { json, methodNotAllowed } = require("../_lib/http");
+const { getUserIdFromRequest } = require("../_lib/auth");
 
 module.exports = async (req, res) => {
   if (req.method !== "GET") return methodNotAllowed(res);

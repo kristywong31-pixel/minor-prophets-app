@@ -11,6 +11,8 @@ import {
   ChevronUp,
   PlayCircle,
   Edit3,
+  Plus,
+  X,
   LogOut,
   MessageCircle,
   Lock,
@@ -38,6 +40,61 @@ function toYouTubeEmbedUrl(url) {
   const id = m?.[1];
   if (!id) return "";
   return `https://www.youtube-nocookie.com/embed/${id}`;
+}
+
+const MOCK_THREADS = [
+  {
+    id: "mock-1",
+    author: "Sarah L.",
+    content: "期待復興！今天讀到的提醒很深刻。",
+    note: "主恩滿溢",
+    likes: 3,
+    isLiked: false,
+    time: "2 小時前",
+    avatarColor: "#F4C7A2",
+    avatarUrl: null,
+    badge: null,
+  },
+  {
+    id: "mock-2",
+    author: "John M.",
+    content: "神是信實的。願我們一起持守。",
+    note: "神是信實的",
+    likes: 8,
+    isLiked: true,
+    time: "5 小時前",
+    avatarColor: "#B4C8E0",
+    avatarUrl: null,
+    badge: "約珥書",
+  },
+  {
+    id: "mock-3",
+    author: "Esther K.",
+    content: "阿摩斯書有點難，但也很扎心…",
+    note: "求主帶領",
+    likes: 1,
+    isLiked: false,
+    time: "1 天前",
+    avatarColor: "#C9D8A7",
+    avatarUrl: null,
+    badge: null,
+  },
+];
+
+function normalizeCommunityPosts(rawPosts) {
+  const list = Array.isArray(rawPosts) ? rawPosts : [];
+  return list.map((p) => ({
+    id: p.id,
+    author: p.author || p.userName || "友",
+    content: p.content || "",
+    note: p.note || "",
+    likes: typeof p.likes === "number" ? p.likes : 0,
+    isLiked: !!(p.isLiked ?? p.liked),
+    time: p.time || "剛剛",
+    avatarColor: p.avatarColor || null,
+    avatarUrl: p.avatarUrl || null,
+    badge: p.badge || null,
+  }));
 }
 
 const AVATAR_COLORS = ["#F4C7A2", "#F1B0AE", "#E8CE97", "#C9D8A7", "#B4C8E0"];
@@ -568,11 +625,11 @@ function CourseCard({
                       className="w-full h-9 rounded-full text-[12px] font-semibold border shadow-sm active:scale-95 transition-all"
                       style={{
                         backgroundColor: "white",
-                        borderColor: theme.accent,
+                        borderColor: "#E5E7EB",
                         color: theme.textMain,
                       }}
                     >
-                      完成小測
+                      已完成小測
                     </button>
                   </div>
                 )}
@@ -657,8 +714,12 @@ export default function App() {
   const [expandedCourseId, setExpandedCourseId] = useState(null);
   const [progressByUser, setProgressByUser] = useState({}); // { [courseId]: progress }
   const [quizCompletion, setQuizCompletion] = useState({}); // { [courseId]: true }
-  const [posts, setPosts] = useState([]);
-  const [likedPosts, setLikedPosts] = useState({}); // { [postId]: true }
+  const [posts, setPosts] = useState(MOCK_THREADS);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [composerText, setComposerText] = useState("");
+  const [composerError, setComposerError] = useState("");
+  const [composerBusy, setComposerBusy] = useState(false);
+  const [likeBursts, setLikeBursts] = useState({}); // { [postId]: number }
   const [showBadgeAlert, setShowBadgeAlert] = useState(null);
 
   // 讀取登入狀態（HttpOnly cookie）
@@ -695,10 +756,8 @@ export default function App() {
           }
         });
         setQuizCompletion(qc);
-        setPosts(c.posts || []);
-        const liked = {};
-        for (const post of c.posts || []) liked[post.id] = !!post.liked;
-        setLikedPosts(liked);
+        const normalized = normalizeCommunityPosts(c.posts || []);
+        setPosts(normalized.length ? normalized : MOCK_THREADS);
       })
       .catch(() => {});
     return () => {
@@ -785,10 +844,8 @@ export default function App() {
           const course = COURSES.find((c) => c.id === courseId);
           if (course) setShowBadgeAlert(course.title);
           return apiFetch("/api/community/list").then((c) => {
-            setPosts(c.posts || []);
-            const liked = {};
-            for (const post of c.posts || []) liked[post.id] = !!post.liked;
-            setLikedPosts(liked);
+            const normalized = normalizeCommunityPosts(c.posts || []);
+            setPosts(normalized.length ? normalized : MOCK_THREADS);
           });
         }
         return null;
@@ -803,7 +860,6 @@ export default function App() {
         setUser(null);
         setProgressByUser({});
         setPosts([]);
-        setLikedPosts({});
         setActiveTab("courses");
       });
   };
@@ -898,12 +954,24 @@ export default function App() {
 
   const renderCommunityTab = () => (
     <div className="pb-24 px-4 pt-6">
-      <h2
-        className="text-xl font-bold mb-5"
-        style={{ color: theme.textMain }}
-      >
-        先知性群體 · Threads
-      </h2>
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-xl font-bold" style={{ color: theme.textMain }}>
+          先知性群體 · Threads
+        </h2>
+        <button
+          type="button"
+          onClick={() => {
+            setComposerOpen(true);
+            setComposerText("");
+            setComposerError("");
+          }}
+          className="h-9 px-3 rounded-full text-[12px] font-semibold text-white shadow-md active:scale-95 transition-all inline-flex items-center gap-1.5"
+          style={{ backgroundColor: theme.accent }}
+        >
+          <Plus size={14} />
+          發佈貼文
+        </button>
+      </div>
 
       {/* 自己的便簽輸入 */}
       <div
@@ -930,7 +998,6 @@ export default function App() {
       {/* Threads 風格動態 */}
       <div className="space-y-4">
         {posts.map((post) => {
-          const liked = likedPosts[post.id];
           return (
             <div
               key={post.id}
@@ -942,7 +1009,7 @@ export default function App() {
                     className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-gray-700"
                     style={{ backgroundColor: post.avatarColor || "#F4C7A2" }}
                   >
-                    {post.userName?.[0] || "友"}
+                    {(post.author || "友")?.[0] || "友"}
                   </div>
                   <div className="absolute -top-1 -right-1 bg-white border border-gray-200 text-[10px] px-1.5 py-0.5 rounded-full shadow-sm max-w-[90px] truncate">
                     {post.note}
@@ -954,37 +1021,17 @@ export default function App() {
                       className="text-sm font-semibold"
                       style={{ color: theme.textMain }}
                     >
-                      {post.userName}
+                      {post.author}
                     </span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-gray-400">{post.time}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setLikedPosts((prev) => ({
-                            ...prev,
-                            [post.id]: !prev[post.id],
-                          }));
-                          apiFetch("/api/community/like", {
-                            method: "POST",
-                            body: JSON.stringify({ postId: post.id }),
-                          })
-                            .then((r) =>
-                              setLikedPosts((prev) => ({ ...prev, [post.id]: !!r.liked }))
-                            )
-                            .catch(() => {});
-                        }}
-                        className="p-1 rounded-full hover:bg-gray-100"
-                      >
-                        <Heart
-                          size={14}
-                          className={
-                            liked ? "text-accent-bread fill-accent-bread" : "text-gray-300"
-                          }
-                        />
-                      </button>
-                    </div>
+                    <span className="text-[10px] text-gray-400">{post.time}</span>
                   </div>
+
+                  {post.content && (
+                    <p className="mt-2 text-sm leading-relaxed" style={{ color: theme.textMain }}>
+                      {post.content}
+                    </p>
+                  )}
+
                   {post.badge && (
                     <div className="mt-2 inline-flex items-center gap-2 bg-yellow-50 px-3 py-1.5 rounded-xl border border-yellow-100">
                       <Award size={14} className="text-orange-500" />
@@ -993,6 +1040,69 @@ export default function App() {
                       </span>
                     </div>
                   )}
+
+                  <div className="mt-3 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        let didLike = false;
+                        setPosts((prev) =>
+                          prev.map((p) => {
+                            if (p.id !== post.id) return p;
+                            const nextLiked = !p.isLiked;
+                            didLike = nextLiked;
+                            return {
+                              ...p,
+                              isLiked: nextLiked,
+                              likes: Math.max(0, (p.likes || 0) + (nextLiked ? 1 : -1)),
+                            };
+                          })
+                        );
+                        if (didLike) {
+                          setLikeBursts((prev) => ({
+                            ...prev,
+                            [post.id]: (prev[post.id] || 0) + 1,
+                          }));
+                        }
+                        apiFetch("/api/community/like", {
+                          method: "POST",
+                          body: JSON.stringify({ postId: post.id }),
+                        })
+                          .then((r) => {
+                            setPosts((prev) =>
+                              prev.map((p) => {
+                                if (p.id !== post.id) return p;
+                                if (p.isLiked === !!r.liked) return p;
+                                return {
+                                  ...p,
+                                  isLiked: !!r.liked,
+                                  likes: Math.max(0, (p.likes || 0) + (r.liked ? 1 : -1)),
+                                };
+                              })
+                            );
+                          })
+                          .catch(() => {});
+                      }}
+                      className="relative inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                    >
+                      <Heart
+                        size={16}
+                        className={post.isLiked ? "text-red-500 fill-red-500" : "text-gray-300"}
+                      />
+                      <span className="text-[11px] text-gray-500">{post.likes || 0}</span>
+                      {likeBursts[post.id] ? (
+                        <motion.span
+                          key={`${post.id}-${likeBursts[post.id]}`}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: [0, 1, 0], y: [6, -6, -14] }}
+                          transition={{ duration: 0.8 }}
+                          className="absolute -top-2 left-6 text-[10px] font-bold text-red-500 pointer-events-none"
+                        >
+                          +1
+                        </motion.span>
+                      ) : null}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1000,10 +1110,122 @@ export default function App() {
         })}
         {posts.length === 0 && (
           <p className="text-center text-xs text-gray-400 mt-6">
-            還沒有動態，完成一堂課來成為第一位分享的人吧！
+            還沒有動態~
           </p>
         )}
       </div>
+
+      <AnimatePresence>
+        {composerOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm flex items-end justify-center p-4"
+            onClick={() => {
+              if (composerBusy) return;
+              setComposerOpen(false);
+            }}
+          >
+            <motion.div
+              initial={{ y: 24, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 24, opacity: 0 }}
+              className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-bold" style={{ color: theme.textMain }}>
+                  發佈貼文
+                </h3>
+                <button
+                  type="button"
+                  className="p-2 rounded-full hover:bg-gray-100"
+                  onClick={() => {
+                    if (composerBusy) return;
+                    setComposerOpen(false);
+                  }}
+                >
+                  <X size={16} className="text-gray-500" />
+                </button>
+              </div>
+
+              <textarea
+                rows={4}
+                className="w-full px-3 py-2 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:ring-1 focus:ring-orange-300 resize-none"
+                placeholder="想分享什麼？"
+                value={composerText}
+                onChange={(e) => {
+                  setComposerText(e.target.value);
+                  setComposerError("");
+                }}
+                disabled={composerBusy}
+              />
+              {composerError && <p className="mt-2 text-xs text-red-500">{composerError}</p>}
+
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  className="flex-1 h-10 rounded-full border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                  onClick={() => {
+                    if (composerBusy) return;
+                    setComposerOpen(false);
+                  }}
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  disabled={composerBusy}
+                  className="flex-1 h-10 rounded-full text-sm font-semibold text-white shadow-md active:scale-95 transition-all disabled:opacity-60"
+                  style={{ backgroundColor: theme.accent }}
+                  onClick={() => {
+                    const content = composerText.trim();
+                    if (!content) {
+                      setComposerError("請輸入內容。");
+                      return;
+                    }
+                    setComposerBusy(true);
+                    setComposerError("");
+
+                    const optimistic = {
+                      id: `tmp-${Date.now()}`,
+                      author: user.name,
+                      content,
+                      note: user.note || "",
+                      likes: 0,
+                      isLiked: false,
+                      time: "剛剛",
+                      avatarColor: user.avatarColor || "#F4C7A2",
+                      avatarUrl: user.avatarUrl || null,
+                      badge: null,
+                    };
+                    setPosts((prev) => [optimistic, ...prev]);
+                    setComposerOpen(false);
+                    setComposerText("");
+
+                    apiFetch("/api/community/post", {
+                      method: "POST",
+                      body: JSON.stringify({ content }),
+                    })
+                      .then(() => apiFetch("/api/community/list"))
+                      .then((c) => {
+                        const normalized = normalizeCommunityPosts(c.posts || []);
+                        setPosts(normalized.length ? normalized : MOCK_THREADS);
+                      })
+                      .catch(() => {
+                        alert("發佈失敗，請稍後再試。");
+                      })
+                      .finally(() => setComposerBusy(false));
+                  }}
+                >
+                  發佈
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 
@@ -1068,10 +1290,8 @@ export default function App() {
                   })
                     .then(() => apiFetch("/api/community/list"))
                     .then((c) => {
-                      setPosts(c.posts || []);
-                      const liked = {};
-                      for (const post of c.posts || []) liked[post.id] = !!post.liked;
-                      setLikedPosts(liked);
+                      const normalized = normalizeCommunityPosts(c.posts || []);
+                      setPosts(normalized.length ? normalized : MOCK_THREADS);
                       setActiveTab("community");
                     })
                     .catch(() => {});
@@ -1089,7 +1309,7 @@ export default function App() {
           </div>
           <div>
             <label className="block text-xs mb-1" style={{ color: theme.textMain }}>
-              個人大頭照（上載相片）
+              個人頭像（上載相片）
             </label>
             <input
               type="file"
@@ -1147,7 +1367,8 @@ export default function App() {
           學習獎勵
         </h3>
         <p className="text-xs text-orange-800 mb-4">
-          集齊 10 個徽章，可獲得神秘禮物一份！（每月合堂，同工派發該月實體徽章）
+          集齊 10 個徽章，可獲得神秘禮物一份！
+          （每月合堂，同工派發該月實體徽章）
         </p>
         <div className="w-full h-2 bg-white/60 rounded-full overflow-hidden mb-1.5">
           <div
