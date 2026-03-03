@@ -1,8 +1,8 @@
-const { getPool } = require("../../lib/db.cjs");
-const { json, methodNotAllowed } = require("../../lib/http.cjs");
-const { readJson } = require("../../lib/body.cjs");
-const { signSession, setSessionCookie } = require("../../lib/auth.cjs");
-const { signSession, setSessionCookie } = require("../_lib/auth.cjs");
+const bcrypt = require("bcryptjs");
+const { getPool } = require("../_lib/db");
+const { json, methodNotAllowed } = require("../_lib/http");
+const { readJson } = require("../_lib/body");
+const { signSession, setSessionCookie } = require("../_lib/auth");
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") return methodNotAllowed(res);

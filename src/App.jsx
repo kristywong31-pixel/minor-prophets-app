@@ -10,7 +10,6 @@ import {
   ChevronDown,
   ChevronUp,
   PlayCircle,
-  Video,
   Edit3,
   LogOut,
   MessageCircle,
@@ -18,7 +17,6 @@ import {
   Heart,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { QUIZ_BANK } from "./quizData";
 
 // === Design System ===
 const theme = {
@@ -30,6 +28,17 @@ const theme = {
   success: "#7A9E7E",
   gray: "#9CA3AF",
 };
+
+function toYouTubeEmbedUrl(url) {
+  const raw = String(url || "").trim();
+  if (!raw) return "";
+  if (raw.includes("youtube.com/embed/") || raw.includes("youtube-nocookie.com/embed/")) return raw;
+
+  const m = raw.match(/(?:youtu\.be\/|v=|\/shorts\/)([A-Za-z0-9_-]{6,})/);
+  const id = m?.[1];
+  if (!id) return "";
+  return `https://www.youtube-nocookie.com/embed/${id}`;
+}
 
 const AVATAR_COLORS = ["#F4C7A2", "#F1B0AE", "#E8CE97", "#C9D8A7", "#B4C8E0"];
 
@@ -69,6 +78,7 @@ const COURSES = [
     chapters: 14,
     badgeKey: "hosea",
     quizUrl: "https://forms.gle/ar2hQDh5xTYULqhS8",
+    youtubeLink: "https://www.youtube.com/live/iBbO5iCNNkg?si=0IILeXYwP2EtDw2A",
   },
   {
     id: 2,
@@ -78,6 +88,7 @@ const COURSES = [
     chapters: 3,
     badgeKey: "joel",
     quizUrl: "https://docs.google.com/forms/d/placeholder-joel",
+    youtubeLink: "",
   },
   {
     id: 3,
@@ -87,6 +98,7 @@ const COURSES = [
     chapters: 9,
     badgeKey: "amos",
     quizUrl: "https://docs.google.com/forms/d/placeholder-amos",
+    youtubeLink: "",
   },
   {
     id: 4,
@@ -96,6 +108,7 @@ const COURSES = [
     chapters: 4,
     badgeKey: "jonah",
     quizUrl: "https://docs.google.com/forms/d/placeholder-jonah",
+    youtubeLink: "",
   },
   {
     id: 5,
@@ -105,6 +118,7 @@ const COURSES = [
     chapters: 7,
     badgeKey: "micah",
     quizUrl: "https://docs.google.com/forms/d/placeholder-micah",
+    youtubeLink: "",
   },
   {
     id: 6,
@@ -114,6 +128,7 @@ const COURSES = [
     chapters: 3,
     badgeKey: "nahum",
     quizUrl: "https://docs.google.com/forms/d/placeholder-nahum",
+    youtubeLink: "",
   },
   {
     id: 7,
@@ -123,6 +138,7 @@ const COURSES = [
     chapters: 3,
     badgeKey: "habakkuk",
     quizUrl: "https://docs.google.com/forms/d/placeholder-habakkuk",
+    youtubeLink: "",
   },
   {
     id: 8,
@@ -132,6 +148,7 @@ const COURSES = [
     chapters: 3,
     badgeKey: "zephaniah",
     quizUrl: "https://docs.google.com/forms/d/placeholder-zephaniah",
+    youtubeLink: "",
   },
   {
     id: 9,
@@ -141,6 +158,7 @@ const COURSES = [
     chapters: 2,
     badgeKey: "haggai",
     quizUrl: "https://docs.google.com/forms/d/placeholder-haggai",
+    youtubeLink: "",
   },
   {
     id: 10,
@@ -150,6 +168,7 @@ const COURSES = [
     chapters: 4,
     badgeKey: "malachi",
     quizUrl: "https://docs.google.com/forms/d/placeholder-malachi",
+    youtubeLink: "",
   },
 ];
 
@@ -199,7 +218,7 @@ function safeParse(json, fallback) {
 
 // === Auth 畫面：以「姓名 + 密碼」為主 ===
 function AuthScreen({ onAuth, error }) {
-  const [isRegister, setIsRegister] = useState(true);
+  const [isRegister, setIsRegister] = useState(false);
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [localError, setLocalError] = useState("");
@@ -387,6 +406,7 @@ function CourseCard({
 
   const isComplete = readingProgress === 100 && isQuizDone && isAttendanceDone;
   const isStarted = chaptersDone > 0 || isQuizDone || isAttendanceDone;
+  const youtubeEmbedUrl = toYouTubeEmbedUrl(course.youtubeLink);
 
   let statusColor = theme.gray;
   let statusIcon = <Circle size={18} />;
@@ -519,9 +539,14 @@ function CourseCard({
                   <Edit3 size={14} /> 課前小測
                 </h4>
                 {isQuizDone ? (
-                  <div className="p-3 rounded-xl bg-green-50 border border-green-100 flex items-center justify-between">
-                    <span className="text-xs text-green-800">已完成小測</span>
-                  </div>
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full h-9 rounded-full text-[12px] font-semibold text-white border border-transparent"
+                    style={{ backgroundColor: theme.success }}
+                  >
+                    已完成小測
+                  </button>
                 ) : (
                   <div className="space-y-3">
                     {course.quizUrl ? (
@@ -539,7 +564,7 @@ function CourseCard({
                     <button
                       type="button"
                       onClick={handleFinishQuiz}
-                      className="w-full h-9 rounded-full bg-accent-bread text-white text-[12px] font-semibold shadow-md active:scale-95 transition-transform"
+                      className="w-full h-9 rounded-full bg-white border border-blue-200 text-gray-600 text-[12px] font-semibold shadow-sm hover:bg-blue-50 active:scale-95 transition-all"
                     >
                       完成小測
                     </button>
@@ -572,7 +597,7 @@ function CourseCard({
                           progress?.attendance?.type === "live" ? "white" : theme.textMain,
                       }}
                     >
-                      <Users size={14} /> 參加直播
+                      <Users size={14} /> 已參加Zoom
                     </button>
                     <button
                       type="button"
@@ -589,21 +614,25 @@ function CourseCard({
                           progress?.attendance?.type === "replay" ? "white" : theme.textMain,
                       }}
                     >
-                      <PlayCircle size={14} /> 觀看錄影
+                      <PlayCircle size={14} /> 已觀看錄影
                     </button>
                   </div>
-                  <div className="relative">
-                    <Video size={16} className="absolute left-3 top-3 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder=" YouTube 連結尚未上載"
-                      className="w-full pl-10 p-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:ring-1 focus:ring-orange-300"
-                      value={progress?.attendance?.link || ""}
-                      onChange={(e) =>
-                        setAttendance(progress?.attendance?.type || "live", e.target.value)
-                      }
-                    />
-                  </div>
+                  {youtubeEmbedUrl ? (
+                    <div className="w-full aspect-video rounded-2xl overflow-hidden border border-gray-200 bg-black/5">
+                      <iframe
+                        className="w-full h-full"
+                        src={youtubeEmbedUrl}
+                        title={`${course.title} YouTube`}
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full aspect-video rounded-2xl border border-gray-200 bg-gray-50 flex items-center justify-center">
+                      <span className="text-xs text-gray-400">YouTube 連結尚未上載</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

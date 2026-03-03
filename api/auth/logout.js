@@ -1,5 +1,5 @@
-const { json, methodNotAllowed } = require("../_lib/http.cjs");
-const { clearSessionCookie } = require("../_lib/auth.cjs");
+const { json, methodNotAllowed } = require("../_lib/http");
+const { clearSessionCookie } = require("../_lib/auth");
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") return methodNotAllowed(res);
