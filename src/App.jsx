@@ -959,125 +959,124 @@ export default function App() {
         </button>
       </div>
 
-      {/* Threads 風格動態 */}
-      <div className="space-y-5">
+      {/* Threads 風格動態：卡片式排版 */}
+      <div className="space-y-4">
         {posts.map((post) => {
-          return (
-            <div key={post.id} className="flex flex-col items-center">
-              {/* 氣泡對話框 */}
-              <div className="w-full max-w-sm">
-                <div className="relative inline-block">
-                  <div className="bg-white rounded-2xl shadow-sm px-4 py-3">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span
-                        className="text-sm font-semibold"
-                        style={{ color: theme.textMain }}
-                      >
-                        {post.author}
-                      </span>
-                      <span className="text-[10px] text-gray-400">{post.time}</span>
-                    </div>
-                    {post.content && (
-                      <p
-                        className="text-sm leading-relaxed"
-                        style={{ color: theme.textMain }}
-                      >
-                        {post.content}
-                      </p>
-                    )}
-                    {post.badge && (
-                      <div className="mt-2 inline-flex items-center gap-2 bg-yellow-50 px-3 py-1.5 rounded-xl border border-yellow-100">
-                        <Award size={14} className="text-orange-500" />
-                        <span className="text-[11px] text-orange-800">
-                          剛剛解鎖了「{post.badge}」徽章！
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  {/* 氣泡小圓點 */}
-                  <div className="absolute left-8 -bottom-2 w-3 h-3 rounded-full bg-white border border-gray-200 shadow-sm" />
-                </div>
-              </div>
+          const isSelf = (post.author || "") === (user.name || "");
+          const effectiveAuthor = isSelf ? user.name : post.author;
+          const effectiveNote = isSelf ? (user.note || "") : (post.note || "");
+          const effectiveAvatarColor = isSelf
+            ? user.avatarColor || post.avatarColor || "#F4C7A2"
+            : post.avatarColor || "#F4C7A2";
 
-              {/* 頭像 + 便簽 */}
-              <div className="mt-4 flex flex-col items-center gap-1">
-                <div className="relative">
+          return (
+            <div
+              key={post.id}
+              className="bg-white rounded-2xl shadow-md p-4"
+            >
+              <div className="flex gap-3">
+                <div className="relative flex-shrink-0">
                   <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-gray-700"
-                    style={{ backgroundColor: post.avatarColor || "#F4C7A2" }}
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-gray-700"
+                    style={{ backgroundColor: effectiveAvatarColor }}
                   >
-                    {(post.author || "友")?.[0] || "友"}
+                    {(effectiveAuthor || "友")?.[0] || "友"}
                   </div>
-                  {!!post.note && (
-                    <div className="absolute -top-1 -left-1 z-10 bg-white border border-gray-200 text-[10px] px-1.5 py-0.5 rounded-full shadow-sm max-w-[120px] truncate">
-                      {post.note}
+                  {!!effectiveNote && (
+                    <div className="absolute -top-1 -right-1 z-10 bg-white border border-gray-200 text-[10px] px-1.5 py-0.5 rounded-full shadow-sm max-w-[90px] truncate">
+                      {effectiveNote}
                     </div>
                   )}
                 </div>
-              </div>
+                <div className="flex-1">
+                  <div className="flex justify-between items-center">
+                    <span
+                      className="text-sm font-semibold"
+                      style={{ color: theme.textMain }}
+                    >
+                      {effectiveAuthor}
+                    </span>
+                    <span className="text-[10px] text-gray-400">{post.time}</span>
+                  </div>
 
-              {/* 愛心互動 */}
-              <div className="mt-3 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    let didLike = false;
-                    setPosts((prev) =>
-                      prev.map((p) => {
-                        if (p.id !== post.id) return p;
-                        const nextLiked = !p.isLiked;
-                        didLike = nextLiked;
-                        return {
-                          ...p,
-                          isLiked: nextLiked,
-                          likes: Math.max(0, (p.likes || 0) + (nextLiked ? 1 : -1)),
-                        };
-                      })
-                    );
-                    if (didLike) {
-                      setLikeBursts((prev) => ({
-                        ...prev,
-                        [post.id]: (prev[post.id] || 0) + 1,
-                      }));
-                    }
-                    apiFetch("/api/community/like", {
-                      method: "POST",
-                      body: JSON.stringify({ postId: post.id }),
-                    })
-                      .then((r) => {
+                  {post.content && (
+                    <p className="mt-2 text-sm leading-relaxed" style={{ color: theme.textMain }}>
+                      {post.content}
+                    </p>
+                  )}
+
+                  {post.badge && (
+                    <div className="mt-2 inline-flex items-center gap-2 bg-yellow-50 px-3 py-1.5 rounded-xl border border-yellow-100">
+                      <Award size={14} className="text-orange-500" />
+                      <span className="text-[11px] text-orange-800">
+                        剛剛解鎖了「{post.badge}」徽章！
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="mt-3 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        let didLike = false;
                         setPosts((prev) =>
                           prev.map((p) => {
                             if (p.id !== post.id) return p;
-                            if (p.isLiked === !!r.liked) return p;
+                            const nextLiked = !p.isLiked;
+                            didLike = nextLiked;
                             return {
                               ...p,
-                              isLiked: !!r.liked,
-                              likes: Math.max(0, (p.likes || 0) + (r.liked ? 1 : -1)),
+                              isLiked: nextLiked,
+                              likes: Math.max(0, (p.likes || 0) + (nextLiked ? 1 : -1)),
                             };
                           })
                         );
-                      })
-                      .catch(() => {});
-                  }}
-                  className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors"
-                >
-                  <Heart
-                    size={16}
-                    className={post.isLiked ? "text-red-500 fill-red-500" : "text-gray-300"}
-                  />
-                  <span className="text-[11px] text-gray-500">{post.likes || 0}</span>
-                  {likeBursts[post.id] ? (
-                    <motion.span
-                      key={`${post.id}-${likeBursts[post.id]}`}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: [0, 1, 0], y: [6, -6, -14] }}
-                      transition={{ duration: 0.8 }}
-                      className="absolute -top-2 left-7 text-[10px] font-bold text-red-500 pointer-events-none"
+                        if (didLike) {
+                          setLikeBursts((prev) => ({
+                            ...prev,
+                            [post.id]: (prev[post.id] || 0) + 1,
+                          }));
+                        }
+                        apiFetch("/api/community/like", {
+                          method: "POST",
+                          body: JSON.stringify({ postId: post.id }),
+                        })
+                          .then((r) => {
+                            setPosts((prev) =>
+                              prev.map((p) => {
+                                if (p.id !== post.id) return p;
+                                if (p.isLiked === !!r.liked) return p;
+                                return {
+                                  ...p,
+                                  isLiked: !!r.liked,
+                                  likes: Math.max(0, (p.likes || 0) + (r.liked ? 1 : -1)),
+                                };
+                              })
+                            );
+                          })
+                          .catch(() => {});
+                      }}
+                      className="relative inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full hover:bg-gray-100 transition-colors"
                     >
-                      +1
-                    </motion.span>
-                  ) : null}
-                </button>
+                      <Heart
+                        size={16}
+                        className={post.isLiked ? "text-red-500 fill-red-500" : "text-gray-300"}
+                      />
+                      <span className="text-[11px] text-gray-500">{post.likes || 0}</span>
+                      {likeBursts[post.id] ? (
+                        <motion.span
+                          key={`${post.id}-${likeBursts[post.id]}`}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: [0, 1, 0], y: [6, -6, -14] }}
+                          transition={{ duration: 0.8 }}
+                          className="absolute -top-2 left-6 text-[10px] font-bold text-red-500 pointer-events-none"
+                        >
+                          +1
+                        </motion.span>
+                      ) : null}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           );
