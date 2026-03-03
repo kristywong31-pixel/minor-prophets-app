@@ -34,7 +34,7 @@ function toYouTubeEmbedUrl(url) {
   if (!raw) return "";
   if (raw.includes("youtube.com/embed/") || raw.includes("youtube-nocookie.com/embed/")) return raw;
 
-  const m = raw.match(/(?:youtu\.be\/|v=|\/shorts\/)([A-Za-z0-9_-]{6,})/);
+  const m = raw.match(/(?:youtu\.be\/|v=|\/shorts\/|\/live\/)([A-Za-z0-9_-]{6,})/);
   const id = m?.[1];
   if (!id) return "";
   return `https://www.youtube-nocookie.com/embed/${id}`;
@@ -543,7 +543,7 @@ function CourseCard({
                     type="button"
                     disabled
                     className="w-full h-9 rounded-full text-[12px] font-semibold text-white border border-transparent"
-                    style={{ backgroundColor: theme.success }}
+                    style={{ backgroundColor: theme.accent, borderColor: theme.accent }}
                   >
                     已完成小測
                   </button>
@@ -554,7 +554,8 @@ function CourseCard({
                         href={course.quizUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-center w-full h-9 rounded-full text-[12px] border bg-white border-gray-300 text-coffee hover:border-orange-300 transition-colors"
+                        className="flex items-center justify-center w-full h-9 rounded-full text-[12px] border bg-white transition-all"
+                        style={{ borderColor: "#E5E7EB", color: theme.textMain }}
                       >
                         開始測驗
                       </a>
@@ -564,7 +565,12 @@ function CourseCard({
                     <button
                       type="button"
                       onClick={handleFinishQuiz}
-                      className="w-full h-9 rounded-full bg-white border border-blue-200 text-gray-600 text-[12px] font-semibold shadow-sm hover:bg-blue-50 active:scale-95 transition-all"
+                      className="w-full h-9 rounded-full text-[12px] font-semibold border shadow-sm active:scale-95 transition-all"
+                      style={{
+                        backgroundColor: "white",
+                        borderColor: theme.accent,
+                        color: theme.textMain,
+                      }}
                     >
                       完成小測
                     </button>
