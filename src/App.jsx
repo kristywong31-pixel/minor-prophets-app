@@ -42,45 +42,6 @@ function toYouTubeEmbedUrl(url) {
   return `https://www.youtube-nocookie.com/embed/${id}`;
 }
 
-const MOCK_THREADS = [
-  {
-    id: "mock-1",
-    author: "Sarah L.",
-    content: "期待復興！今天讀到的提醒很深刻。",
-    note: "主恩滿溢",
-    likes: 3,
-    isLiked: false,
-    time: "2 小時前",
-    avatarColor: "#F4C7A2",
-    avatarUrl: null,
-    badge: null,
-  },
-  {
-    id: "mock-2",
-    author: "John M.",
-    content: "神是信實的。願我們一起持守。",
-    note: "神是信實的",
-    likes: 8,
-    isLiked: true,
-    time: "5 小時前",
-    avatarColor: "#B4C8E0",
-    avatarUrl: null,
-    badge: "約珥書",
-  },
-  {
-    id: "mock-3",
-    author: "Esther K.",
-    content: "阿摩斯書有點難，但也很扎心…",
-    note: "求主帶領",
-    likes: 1,
-    isLiked: false,
-    time: "1 天前",
-    avatarColor: "#C9D8A7",
-    avatarUrl: null,
-    badge: null,
-  },
-];
-
 function normalizeCommunityPosts(rawPosts) {
   const list = Array.isArray(rawPosts) ? rawPosts : [];
   return list.map((p) => ({
@@ -135,7 +96,7 @@ const COURSES = [
     chapters: 14,
     badgeKey: "hosea",
     quizUrl: "https://forms.gle/ar2hQDh5xTYULqhS8",
-    youtubeLink: "https://www.youtube.com/live/iBbO5iCNNkg?si=0IILeXYwP2EtDw2A",
+    youtubeLink: "",
   },
   {
     id: 2,
@@ -714,7 +675,7 @@ export default function App() {
   const [expandedCourseId, setExpandedCourseId] = useState(null);
   const [progressByUser, setProgressByUser] = useState({}); // { [courseId]: progress }
   const [quizCompletion, setQuizCompletion] = useState({}); // { [courseId]: true }
-  const [posts, setPosts] = useState(MOCK_THREADS);
+  const [posts, setPosts] = useState([]);
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerText, setComposerText] = useState("");
   const [composerError, setComposerError] = useState("");
@@ -756,8 +717,7 @@ export default function App() {
           }
         });
         setQuizCompletion(qc);
-        const normalized = normalizeCommunityPosts(c.posts || []);
-        setPosts(normalized.length ? normalized : MOCK_THREADS);
+        setPosts(normalizeCommunityPosts(c.posts || []));
       })
       .catch(() => {});
     return () => {
@@ -844,8 +804,7 @@ export default function App() {
           const course = COURSES.find((c) => c.id === courseId);
           if (course) setShowBadgeAlert(course.title);
           return apiFetch("/api/community/list").then((c) => {
-            const normalized = normalizeCommunityPosts(c.posts || []);
-            setPosts(normalized.length ? normalized : MOCK_THREADS);
+            setPosts(normalizeCommunityPosts(c.posts || []));
           });
         }
         return null;
@@ -973,28 +932,6 @@ export default function App() {
         </button>
       </div>
 
-      {/* 自己的便簽輸入 */}
-      <div
-        className="bg-white rounded-2xl shadow-md p-4 flex gap-3 mb-6"
-      >
-        <div
-          className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-orange-700 ${
-            user.avatarColor || "bg-orange-100"
-          }`}
-        >
-          {user.name[0]}
-        </div>
-        <div className="flex-1">
-          <input
-            type="text"
-            placeholder="分享今天的心情或領受…（會出現在你的頭像便簽）"
-            className="w-full bg-transparent text-sm focus:outline-none"
-            value={user.note || ""}
-            onChange={(e) => updateProfile({ note: e.target.value })}
-          />
-        </div>
-      </div>
-
       {/* Threads 風格動態 */}
       <div className="space-y-4">
         {posts.map((post) => {
@@ -1011,7 +948,7 @@ export default function App() {
                   >
                     {(post.author || "友")?.[0] || "友"}
                   </div>
-                  <div className="absolute -top-1 -right-1 bg-white border border-gray-200 text-[10px] px-1.5 py-0.5 rounded-full shadow-sm max-w-[90px] truncate">
+                  <div className="absolute top-0.5 left-0.5 z-10 bg-white border border-gray-200 text-[10px] px-1.5 py-0.5 rounded-full shadow-sm max-w-[90px] truncate">
                     {post.note}
                   </div>
                 </div>
@@ -1209,10 +1146,7 @@ export default function App() {
                       body: JSON.stringify({ content }),
                     })
                       .then(() => apiFetch("/api/community/list"))
-                      .then((c) => {
-                        const normalized = normalizeCommunityPosts(c.posts || []);
-                        setPosts(normalized.length ? normalized : MOCK_THREADS);
-                      })
+                      .then((c) => setPosts(normalizeCommunityPosts(c.posts || [])))
                       .catch(() => {
                         alert("發佈失敗，請稍後再試。");
                       })
@@ -1290,8 +1224,7 @@ export default function App() {
                   })
                     .then(() => apiFetch("/api/community/list"))
                     .then((c) => {
-                      const normalized = normalizeCommunityPosts(c.posts || []);
-                      setPosts(normalized.length ? normalized : MOCK_THREADS);
+                      setPosts(normalizeCommunityPosts(c.posts || []));
                       setActiveTab("community");
                     })
                     .catch(() => {});
