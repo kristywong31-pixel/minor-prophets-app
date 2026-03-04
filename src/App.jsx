@@ -276,14 +276,32 @@ async function apiFetch(path, options = {}) {
 
   if (path === "/api/auth/login" && method === "POST") {
     const body = parseBody();
-    const name = (body.name || "").trim();
-    const password = body.password || "";
-    if (!name || !password) return apiError("姓名或密碼不正確。", 401);
+    const rawName = body.name || "";
+    const rawPassword = body.password || "";
+    const name = rawName.trim();
+    const password = rawPassword.trim();
 
     const users = readArray("app_users");
-    const found = users.find((u) => u.name === name && u.password === password);
-    if (!found) return apiError("姓名或密碼不正確。", 401);
-    const { password: _p, ...safeUser } = found;
+
+    // Debug logging（遮蔽密碼內容）
+    console.log("[DEBUG] app_users from localStorage:", users);
+    console.log("[DEBUG] login input:", {
+      name,
+      passwordLength: password.length,
+    });
+
+    if (!name || !password) return apiError("姓名或密碼不正確。", 401);
+
+    const userByName = users.find((u) => u.name === name);
+    if (!userByName) {
+      return apiError("找不到此帳號，請先建立新帳號", 401);
+    }
+
+    if (userByName.password !== password) {
+      return apiError("密碼不正確", 401);
+    }
+
+    const { password: _p, ...safeUser } = userByName;
     setSessionUser(safeUser);
     return Promise.resolve({ user: safeUser });
   }
