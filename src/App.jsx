@@ -61,11 +61,26 @@ function normalizeCommunityPosts(rawPosts) {
 const AVATAR_COLORS = ["#F4C7A2", "#F1B0AE", "#E8CE97", "#C9D8A7", "#B4C8E0"];
 
 const STORAGE = {
-  users: "pcmp_users_v2_users",
-  session: "pcmp_users_v2_session",
-  progress: "pcmp_users_v2_progress",
-  posts: "pcmp_users_v2_posts",
+  profile: "app_user_profile",
+  learning: "app_learning_data",
+  community: "app_community_posts",
 };
+
+function computeEarnedBadgesFromProgress(progressByCourse) {
+  const badges = [];
+  COURSES.forEach((c) => {
+    const p = progressByCourse?.[c.id];
+    if (!p) return;
+    const readingDone = (p.chapters?.length || 0) === c.chapters;
+    const quizDone = p.quizScore !== undefined && p.quizScore !== null;
+    const attendDone =
+      p.attendance && (p.attendance.type === "live" || p.attendance.type === "replay");
+    if (readingDone && quizDone && attendDone) {
+      badges.push(c.badgeKey);
+    }
+  });
+  return badges;
+}
 
 async function apiFetch(path, options) {
   const res = await fetch(path, {
@@ -700,6 +715,46 @@ export default function App() {
     };
   }, []);
 
+  // 讀取本地 Profile（localStorage）
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const raw = window.localStorage.getItem(STORAGE.profile);
+      if (!raw) return;
+      const all = JSON.parse(raw);
+      const saved = all?.[user.id];
+      if (!saved) return;
+      // 以本地為優先（使用者最後一次修改）
+      setUser((prev) => ({ ...prev, ...saved }));
+    } catch {
+      // ignore
+    }
+  }, [user?.id]);
+
+  // 讀取本地進度（localStorage）
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const raw = window.localStorage.getItem(STORAGE.learning);
+      if (!raw) return;
+      const all = JSON.parse(raw);
+      const saved = all?.[user.id];
+      if (!saved || !saved.courses) return;
+      const coursesProgress = saved.courses || {};
+      setProgressByUser(coursesProgress);
+      const qc = {};
+      Object.keys(coursesProgress).forEach((cid) => {
+        const cp = coursesProgress[cid];
+        if (cp && cp.quizScore !== undefined && cp.quizScore !== null) {
+          qc[cid] = true;
+        }
+      });
+      setQuizCompletion(qc);
+    } catch {
+      // 忽略 localStorage 解析錯誤
+    }
+  }, [user]);
+
   // 登入後載入進度與社群
   useEffect(() => {
     if (!user) return;
@@ -717,13 +772,44 @@ export default function App() {
           }
         });
         setQuizCompletion(qc);
-        setPosts(normalizeCommunityPosts(c.posts || []));
+
+        // 合併本地自訂貼文與後端貼文
+        let remote = normalizeCommunityPosts(c.posts || []);
+        try {
+          const rawLocal = window.localStorage.getItem(STORAGE.community);
+          if (rawLocal) {
+            const localAll = JSON.parse(rawLocal);
+            const localForUser = localAll?.[user.id] || [];
+            const byId = new Map(remote.map((p) => [p.id, p]));
+            for (const lp of localForUser) {
+              if (!byId.has(lp.id)) byId.set(lp.id, lp);
+            }
+            remote = Array.from(byId.values());
+          }
+        } catch {
+          // ignore
+        }
+        setPosts(remote);
       })
       .catch(() => {});
     return () => {
       mounted = false;
     };
   }, [user]);
+
+  // 將社群貼文寫入 localStorage（只存自己建立的）
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const mine = (posts || []).filter((p) => (p.author || "") === (user.name || ""));
+      const raw = window.localStorage.getItem(STORAGE.community);
+      const all = raw ? JSON.parse(raw) : {};
+      all[user.id] = mine;
+      window.localStorage.setItem(STORAGE.community, JSON.stringify(all));
+    } catch {
+      // ignore
+    }
+  }, [user, posts]);
 
   const currentProgress = useMemo(() => {
     if (!user) return {};
@@ -748,6 +834,24 @@ export default function App() {
     });
     return { completedCourses, badges };
   }, [currentProgress, quizCompletion, user]);
+
+  // 將進度與徽章寫入 localStorage
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const raw = window.localStorage.getItem(STORAGE.learning);
+      const all = raw ? JSON.parse(raw) : {};
+      const badges = computeEarnedBadgesFromProgress(progressByUser);
+      all[user.id] = {
+        ...(all?.[user.id] || {}),
+        courses: progressByUser,
+        badges,
+      };
+      window.localStorage.setItem(STORAGE.learning, JSON.stringify(all));
+    } catch {
+      // 忽略 localStorage 寫入錯誤
+    }
+  }, [user, progressByUser]);
 
   // === Auth 處理（以姓名 + 密碼）===
   const handleAuth = ({ mode, payload }) => {
@@ -795,6 +899,21 @@ export default function App() {
     })
       .then((r) => {
         setUser(r.user);
+        // 寫入 localStorage：Profile
+        try {
+          const raw = window.localStorage.getItem(STORAGE.profile);
+          const all = raw ? JSON.parse(raw) : {};
+          all[r.user.id] = {
+            ...(all?.[r.user.id] || {}),
+            name: r.user.name,
+            note: r.user.note || "",
+            avatarColor: r.user.avatarColor || null,
+            avatarUrl: r.user.avatarUrl || null,
+          };
+          window.localStorage.setItem(STORAGE.profile, JSON.stringify(all));
+        } catch {
+          // ignore
+        }
         setPosts((prev) =>
           (prev || []).map((p) => {
             if ((p.author || "") !== (user.name || "")) return p;
