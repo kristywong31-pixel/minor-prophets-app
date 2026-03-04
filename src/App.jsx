@@ -81,6 +81,69 @@ const STORAGE = {
   community: "mp_community_posts",
 };
 
+// 將上載圖片壓縮成 300x300 以內、JPEG 70% 的 Base64
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type.startsWith("image/")) {
+      return reject(new Error("請選擇圖片檔案。"));
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const maxSize = 300;
+          let { width, height } = img;
+          if (!width || !height) {
+            return reject(new Error("無法讀取圖片尺寸。"));
+          }
+
+          if (width > height) {
+            if (width > maxSize) {
+              height = (height * maxSize) / width;
+              width = maxSize;
+            }
+          } else {
+            if (height > maxSize) {
+              width = (width * maxSize) / height;
+              height = maxSize;
+            }
+          }
+
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.round(width);
+          canvas.height = Math.round(height);
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            return reject(new Error("瀏覽器不支援圖片壓縮。"));
+          }
+
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          const quality = 0.7;
+          const compressedDataUrl = canvas.toDataURL("image/jpeg", quality);
+
+          // 簡單大小檢查（約略 < 4MB）
+          const approxBytes = (compressedDataUrl.length * 3) / 4;
+          if (approxBytes > 4 * 1024 * 1024) {
+            return reject(new Error("圖片仍然過大，請選擇較小的圖片。"));
+          }
+
+          resolve(compressedDataUrl);
+        } catch (e) {
+          reject(e);
+        }
+      };
+      img.onerror = () => reject(new Error("圖片載入失敗，請重試。"));
+      img.src = String(ev.target?.result || "");
+    };
+    reader.onerror = () => reject(new Error("圖片讀取失敗，請重試。"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function computeEarnedBadgesFromProgress(progressByCourse) {
   const badges = [];
   COURSES.forEach((c) => {
@@ -97,43 +160,254 @@ function computeEarnedBadgesFromProgress(progressByCourse) {
   return badges;
 }
 
-async function apiFetch(path, options) {
-  // 模擬 API 請求，避免在沒有後端的情況下報錯
-  // 在實際生產環境中，請移除這個模擬邏輯
+async function apiFetch(path, options = {}) {
+  const method = (options.method || "GET").toUpperCase();
+
+  const apiError = (msg, status = 400) => {
+    const err = new Error(msg);
+    err.status = status;
+    return Promise.reject(err);
+  };
+
+  if (typeof window === "undefined" || !window.localStorage) {
+    return apiError("Local storage is not available.", 500);
+  }
+
+  const ls = window.localStorage;
+
+  // --- 初始化 Mock Database ---
+  const ensureArrayKey = (key) => {
+    if (!ls.getItem(key)) {
+      ls.setItem(key, JSON.stringify([]));
+    }
+  };
+  ensureArrayKey("app_users");
+  ensureArrayKey("app_posts");
+  ensureArrayKey("app_progress");
+
+  const readArray = (key) => {
+    try {
+      const raw = ls.getItem(key);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const writeArray = (key, value) => {
+    try {
+      ls.setItem(key, JSON.stringify(value));
+    } catch {
+      // ignore
+    }
+  };
+
+  const getSessionUser = () => {
+    try {
+      const raw = ls.getItem("current_user_session");
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
+
+  const setSessionUser = (user) => {
+    try {
+      ls.setItem("current_user_session", JSON.stringify(user));
+    } catch {
+      // ignore
+    }
+  };
+
+  const clearSession = () => {
+    try {
+      ls.removeItem("current_user_session");
+    } catch {
+      // ignore
+    }
+  };
+
+  const parseBody = () => {
+    if (!options.body) return {};
+    try {
+      return JSON.parse(options.body);
+    } catch {
+      return {};
+    }
+  };
+
+  // === Auth & Profile ===
+
   if (path === "/api/me") {
-    return new Promise((resolve, reject) => {
-       // 模擬：如果 localStorage 有 user，就當作已登入
-       // 這是為了讓您在預覽時不會一直被登出
-       const storedUser = localStorage.getItem("mock_user_session");
-       if (storedUser) {
-         resolve({ user: JSON.parse(storedUser) });
-       } else {
-         reject({ error: "Unauthorized" });
-       }
-    });
-  }
-  
-  // 模擬登入
-  if (path === "/api/auth/login" || path === "/api/auth/register") {
-     const body = JSON.parse(options.body);
-     const mockUser = {
-        id: "u1",
-        name: body.name,
-        note: body.note,
-        avatarColor: body.avatarColor,
-        avatarUrl: null
-     };
-     localStorage.setItem("mock_user_session", JSON.stringify(mockUser));
-     return Promise.resolve({ user: mockUser });
+    const sessionUser = getSessionUser();
+    if (!sessionUser) return apiError("未登入", 401);
+    return Promise.resolve({ user: sessionUser });
   }
 
-  // 模擬登出
+  if (path === "/api/auth/register" && method === "POST") {
+    const body = parseBody();
+    const name = (body.name || "").trim();
+    const password = body.password || "";
+    if (!name) return apiError("請輸入真實姓名。", 400);
+    if (password.length < 6) return apiError("註冊密碼需至少 6 個字元。", 400);
+
+    const users = readArray("app_users");
+    if (users.some((u) => u.name === name)) {
+      return apiError("此姓名已建立帳號，請改用登入或換一個稱呼。", 409);
+    }
+
+    const newUser = {
+      id: `u_${Date.now()}`,
+      name,
+      password,
+      note: body.note || "主恩滿溢",
+      avatarColor: body.avatarColor || null,
+      avatarUrl: body.avatarUrl || null,
+    };
+    users.push(newUser);
+    writeArray("app_users", users);
+    const { password: _p, ...safeUser } = newUser;
+    setSessionUser(safeUser);
+    return Promise.resolve({ user: safeUser });
+  }
+
+  if (path === "/api/auth/login" && method === "POST") {
+    const body = parseBody();
+    const name = (body.name || "").trim();
+    const password = body.password || "";
+    if (!name || !password) return apiError("姓名或密碼不正確。", 401);
+
+    const users = readArray("app_users");
+    const found = users.find((u) => u.name === name && u.password === password);
+    if (!found) return apiError("姓名或密碼不正確。", 401);
+    const { password: _p, ...safeUser } = found;
+    setSessionUser(safeUser);
+    return Promise.resolve({ user: safeUser });
+  }
+
   if (path === "/api/auth/logout") {
-      localStorage.removeItem("mock_user_session");
-      return Promise.resolve({});
+    clearSession();
+    return Promise.resolve({ ok: true });
   }
 
-  // 其他 API 請求直接回傳空或成功
+  if (path === "/api/profile/update" && method === "PATCH") {
+    const sessionUser = getSessionUser();
+    if (!sessionUser) return apiError("未登入", 401);
+    const body = parseBody();
+    const users = readArray("app_users");
+    const idx = users.findIndex((u) => u.id === sessionUser.id);
+    if (idx === -1) return apiError("找不到使用者。", 404);
+    const updated = {
+      ...users[idx],
+      ...body,
+    };
+    users[idx] = updated;
+    writeArray("app_users", users);
+    const { password: _p, ...safeUser } = updated;
+    setSessionUser(safeUser);
+    return Promise.resolve({ user: safeUser });
+  }
+
+  // === Community Posts ===
+
+  if ((path === "/api/community/posts" || path === "/api/community/list") && method === "GET") {
+    const sessionUser = getSessionUser();
+    if (!sessionUser) return apiError("未登入", 401);
+    const users = readArray("app_users");
+    const posts = readArray("app_posts");
+
+    const joined = posts
+      .sort((a, b) => (a.createdAt || "").localeCompare(b.createdAt || ""))
+      .map((p) => {
+        const u = users.find((x) => x.id === p.userId);
+        return {
+          id: p.id,
+          userName: u?.name || "友",
+          note: u?.note || "",
+          avatarColor: u?.avatarColor || null,
+          avatarUrl: u?.avatarUrl || null,
+          badge: null,
+          content: p.content || "",
+          createdAt: p.createdAt || new Date().toISOString(),
+          liked: false,
+        };
+      });
+
+    return Promise.resolve({ posts: joined });
+  }
+
+  if (path === "/api/community/post" && method === "POST") {
+    const sessionUser = getSessionUser();
+    if (!sessionUser) return apiError("未登入", 401);
+    const body = parseBody();
+    const content = (body.content || "").trim();
+    if (!content) return apiError("內容不可為空", 400);
+
+    const posts = readArray("app_posts");
+    const newPost = {
+      id: `p_${Date.now()}`,
+      userId: sessionUser.id,
+      content,
+      createdAt: new Date().toISOString(),
+    };
+    posts.push(newPost);
+    writeArray("app_posts", posts);
+    return Promise.resolve({ id: newPost.id, post: newPost });
+  }
+
+  // === Course Progress ===
+
+  if (path === "/api/course/progress" || path === "/api/progress/update") {
+    if (method !== "PATCH") {
+      return apiError("Method Not Allowed", 405);
+    }
+    const sessionUser = getSessionUser();
+    if (!sessionUser) return apiError("未登入", 401);
+    const body = parseBody();
+    const courseId = body.courseId;
+    if (!courseId) return apiError("courseId 不正確", 400);
+
+    const progress = readArray("app_progress");
+    const idx = progress.findIndex(
+      (r) => r.userId === sessionUser.id && r.courseId === courseId
+    );
+    const record = {
+      userId: sessionUser.id,
+      courseId,
+      chapters: body.chapters || [],
+      quizScore:
+        body.quizScore === undefined || body.quizScore === null
+          ? null
+          : body.quizScore,
+      attendance: body.attendance || {},
+    };
+    if (idx === -1) progress.push(record);
+    else progress[idx] = record;
+    writeArray("app_progress", progress);
+    return Promise.resolve({ ok: true });
+  }
+
+  if (path === "/api/progress/get" && method === "GET") {
+    const sessionUser = getSessionUser();
+    if (!sessionUser) return apiError("未登入", 401);
+    const progress = readArray("app_progress");
+    const mine = progress.filter((r) => r.userId === sessionUser.id);
+    const map = {};
+    for (const r of mine) {
+      map[r.courseId] = {
+        chapters: r.chapters || [],
+        quizScore:
+          r.quizScore === undefined || r.quizScore === null ? undefined : r.quizScore,
+        attendance: r.attendance || {},
+      };
+    }
+    return Promise.resolve({ progress: map });
+  }
+
+  // 其他 API 請求：安全回傳空物件
   return Promise.resolve({});
 }
 
@@ -779,8 +1053,8 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
     let mounted = true;
-  Promise.all([apiFetch("/api/progress/get"), apiFetch("/api/community/list")])
-    .then(([p, c]) => {
+    Promise.all([apiFetch("/api/progress/get"), apiFetch("/api/community/posts")])
+      .then(([p, c]) => {
         if (!mounted) return;
         const progress = p.progress || {};
         setProgressByUser(progress);
@@ -793,8 +1067,8 @@ export default function App() {
         });
         setQuizCompletion(qc);
 
-      // 合併本地自訂貼文與後端貼文
-      let remote = normalizeCommunityPosts(c.posts || []);
+        // 合併本地自訂貼文與後端貼文
+        let remote = normalizeCommunityPosts(c.posts || []);
         try {
           const rawLocal = window.localStorage.getItem(STORAGE.community);
           if (rawLocal) {
@@ -1353,7 +1627,7 @@ export default function App() {
                       method: "POST",
                       body: JSON.stringify({ content }),
                     })
-                      .then(() => apiFetch("/api/community/list"))
+                      .then(() => apiFetch("/api/community/posts"))
                       .then((c) => setPosts(normalizeCommunityPosts(c.posts || [])))
                       .catch(() => {
                         alert("發佈失敗，請稍後再試。");
@@ -1460,14 +1734,13 @@ export default function App() {
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                  const url = ev.target?.result;
-                  if (typeof url === "string") {
-                    updateProfile({ avatarUrl: url });
-                  }
-                };
-                reader.readAsDataURL(file);
+                compressImage(file)
+                  .then((dataUrl) => {
+                    updateProfile({ avatarUrl: dataUrl });
+                  })
+                  .catch((err) => {
+                    alert(err.message || "圖片壓縮失敗，請選擇較小的圖片重試。");
+                  });
               }}
             />
           </div>
