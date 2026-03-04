@@ -27,8 +27,8 @@ import { createClient } from '@supabase/supabase-js';
 // 為了確保程式碼可以獨立運作，這裡直接初始化。
 // 請確保你的專案環境變數 (.env) 已設定，或在此處填入你的 URL 和 Key。
 // ------------------------------------------------------------------
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = "https://lscogljctrempxjwtwue.supabase.co"; 
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzY29nbGpjdHJlbXB4and0d3VlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0NzY1OTQsImV4cCI6MjA4ODA1MjU5NH0.zisZlYu6UmbpA6tUNP6wBzxcFoVzpGFYn9gmIoZxzz8"; // 那串很長的字
 
 // 建立客戶端 (如果沒有 key 則不建立，避免報錯)
 const supabase = (supabaseUrl && supabaseAnonKey) 
