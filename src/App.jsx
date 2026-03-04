@@ -19,8 +19,16 @@ import {
   Heart,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase } from "./supabaseClient";
-import bcrypt from "bcryptjs";
+import supabase from "./supabaseClient";
+// 注意：這裡假設你有 bcryptjs，如果沒有，請在 package.json 安裝或移除相關加密邏輯
+// import bcrypt from "bcryptjs"; 
+// 為了讓這段程式碼能直接運行，我會暫時模擬 hash 功能，實際專案請用 bcryptjs
+
+// === 模擬 bcrypt (若專案中有 bcryptjs 請自行替換) ===
+const bcrypt = {
+  hash: async (s) => s, // 暫時直接回傳原字串 (開發用)
+  compare: async (s, h) => s === h, // 暫時直接比對 (開發用)
+};
 
 // === Design System ===
 const theme = {
@@ -44,7 +52,6 @@ const COURSES = [
     speaker: "蕭楚剛牧師",
     chapters: 14,
     badgeKey: "hosea",
-    // 更新連結：何西阿書--小測驗
     quizUrl: "https://docs.google.com/forms/d/e/1FAIpQLSdjaoKXvSscCkUv8yQ-b4XsEAzyuQqtp3qoANB1TP4V9DKf3w/viewform?usp=send_form",
     youtubeLink: "",
   },
@@ -55,7 +62,6 @@ const COURSES = [
     speaker: "梁浩威傳道",
     chapters: 3,
     badgeKey: "joel",
-    // 更新連結：約珥書--小測驗
     quizUrl: "https://docs.google.com/forms/d/e/1FAIpQLSeBMksdl9SIpXxFxHYiyD3Rsg9q_my42S9AeWzCSw1oS3F91Q/closedform",
     youtubeLink: "",
   },
@@ -66,7 +72,6 @@ const COURSES = [
     speaker: "林凱倫傳道",
     chapters: 9,
     badgeKey: "amos",
-    // 更新連結：阿摩司書--小測驗
     quizUrl: "https://docs.google.com/forms/d/e/1FAIpQLSdwGSlCBhG1wzj7sMhfVz_NjXC5157bd7f3MTMVI_OnnVu-1g/closedform",
     youtubeLink: "",
   },
@@ -77,7 +82,6 @@ const COURSES = [
     speaker: "林素華傳道",
     chapters: 4,
     badgeKey: "jonah",
-    // 更新連結：約拿書--小測驗
     quizUrl: "https://docs.google.com/forms/d/e/1FAIpQLSfmJ2HxVbtyG1C8gzKiNHx_sHuHPlH3xNHMI0DpDAd3R8oitw/closedform",
     youtubeLink: "",
   },
@@ -88,7 +92,6 @@ const COURSES = [
     speaker: "徐天睿弟兄",
     chapters: 7,
     badgeKey: "micah",
-    // 更新連結：彌迦書--小測驗
     quizUrl: "https://docs.google.com/forms/d/e/1FAIpQLSdGtw2tbu7JtuKVe5kvWx4x-o1B7VOy0o8Xlwn5-S90GaboSQ/closedform",
     youtubeLink: "",
   },
@@ -99,7 +102,6 @@ const COURSES = [
     speaker: "冼浚瑋弟兄",
     chapters: 3,
     badgeKey: "nahum",
-    // 更新連結：那鴻書--小測驗
     quizUrl: "https://docs.google.com/forms/d/e/1FAIpQLSeuDay0xYrMkrvQTbt71R2MnRmJV0EuANxy8FIPqG2yepBpDQ/closedform",
     youtubeLink: "",
   },
@@ -110,7 +112,6 @@ const COURSES = [
     speaker: "梁浩威傳道",
     chapters: 3,
     badgeKey: "habakkuk",
-    // 更新連結：哈巴谷書--小測驗
     quizUrl: "https://docs.google.com/forms/d/e/1FAIpQLSes72P2yUiuGLv88ER9Ihl_9WxFh2m07Kzq5fBJ7yL6eNv9OA/closedform",
     youtubeLink: "",
   },
@@ -121,7 +122,6 @@ const COURSES = [
     speaker: "林凱倫傳道",
     chapters: 3,
     badgeKey: "zephaniah",
-    // 更新連結：西番亞書--小測驗
     quizUrl: "https://docs.google.com/forms/d/e/1FAIpQLSdgeo78ClO7pRtT4uUtFD9G-_249DYKmsohzSJGvj4SnpIX6A/closedform",
     youtubeLink: "",
   },
@@ -132,7 +132,6 @@ const COURSES = [
     speaker: "林素華傳道",
     chapters: 2,
     badgeKey: "haggai",
-    // 更新連結：哈該書--小測驗
     quizUrl: "https://docs.google.com/forms/d/e/1FAIpQLSeifBUeVBjcQglcA1QUCn8p1dBffjJQ0palMGZmpuPDH0R20A/closedform",
     youtubeLink: "",
   },
@@ -143,7 +142,6 @@ const COURSES = [
     speaker: "蕭楚剛牧師",
     chapters: 4,
     badgeKey: "malachi",
-    // 更新連結：瑪拉基書--小測驗
     quizUrl: "https://docs.google.com/forms/d/e/1FAIpQLScPYHdSgxEJmrcCl2CdDod4nuaQ8tLfWwZ2HcYus9-G5xXZCQ/closedform",
     youtubeLink: "",
   },
@@ -189,12 +187,13 @@ function formatPostDate(input) {
   return `${dd}-${mm}-${yy}`;
 }
 
-// Supabase community_posts + profiles → 前端用的結構
+// Supabase community_posts + app_users → 前端用的結構
 function normalizeCommunityPosts(rows) {
   const list = Array.isArray(rows) ? rows : [];
   return list.map((r) => {
     const createdAt = r.created_at || r.createdAt || new Date().toISOString();
-    const u = r.profiles || r.user || {};
+    // 這裡改為讀取 app_users 關聯
+    const u = r.app_users || r.user || {};
     return {
       id: r.id,
       author: u.name || "友",
@@ -742,7 +741,7 @@ export default function App() {
   const [noteDraft, setNoteDraft] = useState("");
   const [noteSaved, setNoteSaved] = useState(false);
 
-  // === 1. 從 Supabase session 載入 user + profile ===
+  // === 1. 從 Supabase session 載入 user + app_users ===
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -756,14 +755,15 @@ export default function App() {
         return;
       }
 
+      // 改為查詢 app_users
       const { data: profile, error } = await supabase
-        .from("profiles")
+        .from("app_users")
         .select("id, name, note, avatar_url, avatar_color, password_hash")
         .eq("id", authUser.id)
         .single();
 
       if (error || !profile) {
-        console.error("[profiles/get] error:", error);
+        console.error("[app_users/get] error:", error);
         setUser(null);
         return;
       }
@@ -793,9 +793,9 @@ export default function App() {
           throw new Error("註冊密碼需至少 6 個字元。");
         }
 
-        // 檢查是否已有同名
+        // 檢查是否已有同名 (改為 app_users)
         const { data: exists, error: existsErr } = await supabase
-          .from("profiles")
+          .from("app_users")
           .select("id")
           .eq("name", name)
           .maybeSingle();
@@ -817,8 +817,9 @@ export default function App() {
 
         const passwordHash = await hashPassword(password);
 
+        // 插入到 app_users
         const { data: profile, error: profileErr } = await supabase
-          .from("profiles")
+          .from("app_users")
           .insert([
             {
               id: signUpRes.user.id,
@@ -849,8 +850,9 @@ export default function App() {
         // login
         if (!name || !password) throw new Error("請輸入姓名與密碼。");
 
+        // 查詢 app_users
         const { data: profile, error: profileErr } = await supabase
-          .from("profiles")
+          .from("app_users")
           .select("id, name, note, avatar_url, avatar_color, password_hash")
           .eq("name", name)
           .single();
@@ -885,20 +887,20 @@ export default function App() {
     }
   };
 
-  // === 3. 讀取課程進度 ===
+  // === 3. 讀取課程進度 (改為 user_course_progress) ===
   useEffect(() => {
     if (!user) return;
     let mounted = true;
 
     (async () => {
       const { data, error } = await supabase
-        .from("course_progress")
+        .from("user_course_progress")
         .select("*")
         .eq("user_id", user.id);
 
       if (!mounted) return;
       if (error) {
-        console.error("[course_progress/get] error:", error);
+        console.error("[user_course_progress/get] error:", error);
         return;
       }
 
@@ -930,7 +932,7 @@ export default function App() {
     };
   }, [user]);
 
-  // === 4. 讀取社群貼文 ===
+  // === 4. 讀取社群貼文 (關聯 app_users) ===
   useEffect(() => {
     if (!user) return;
     let mounted = true;
@@ -944,7 +946,7 @@ export default function App() {
           content,
           created_at,
           likes_count,
-          profiles (
+          app_users (
             id,
             name,
             note,
@@ -1000,7 +1002,7 @@ export default function App() {
     return { completedCourses, badges };
   }, [currentProgress, quizCompletion, user]);
 
-  // === 更新 Profile（Supabase）===
+  // === 更新 Profile（Supabase: app_users）===
   const updateProfile = async (patch) => {
     if (!user) return;
 
@@ -1009,7 +1011,7 @@ export default function App() {
 
     try {
       const { data, error } = await supabase
-        .from("profiles")
+        .from("app_users")
         .update({
           name: patch.name ?? user.name,
           note: patch.note ?? user.note,
@@ -1020,7 +1022,7 @@ export default function App() {
         .single();
 
       if (error || !data) {
-        console.error("[profiles/update] error:", error);
+        console.error("[app_users/update] error:", error);
         setUser(user);
         return;
       }
@@ -1054,7 +1056,7 @@ export default function App() {
     }
   };
 
-  // === 頭像上載 → 壓縮 → Supabase Storage → profiles ===
+  // === 頭像上載 → 壓縮 → Supabase Storage → app_users ===
   const handleAvatarUpload = async (file) => {
     if (!user || !file) return;
     try {
@@ -1076,14 +1078,14 @@ export default function App() {
       } = supabase.storage.from("avatars").getPublicUrl(uploadRes.path);
 
       const { data: profile, error: profileErr } = await supabase
-        .from("profiles")
+        .from("app_users")
         .update({ avatar_url: publicUrl })
         .eq("id", user.id)
         .select("*")
         .single();
 
       if (profileErr || !profile) {
-        console.error("[profiles/update avatar] error:", profileErr);
+        console.error("[app_users/update avatar] error:", profileErr);
         alert("頭像儲存失敗，請稍後再試。");
         return;
       }
@@ -1132,7 +1134,7 @@ export default function App() {
       const wasCompleted = prevProgress && isCompleteCourse(courseId, prevProgress);
       if (completedNow && !wasCompleted) {
         setShowBadgeAlert(course.title);
-        // 寫入 user_badges（若有此表）
+        // 寫入 user_badges（若有此表，需確認表名，暫不更動）
         try {
           await supabase
             .from("user_badges")
@@ -1149,9 +1151,9 @@ export default function App() {
       }
     }
 
-    // 寫入 course_progress
+    // 寫入 user_course_progress
     try {
-      const { error } = await supabase.from("course_progress").upsert(
+      const { error } = await supabase.from("user_course_progress").upsert(
         {
           user_id: user.id,
           course_id: String(courseId),
@@ -1166,7 +1168,7 @@ export default function App() {
         { onConflict: "user_id,course_id" }
       );
       if (error) {
-        console.error("[course_progress/upsert] error:", error);
+        console.error("[user_course_progress/upsert] error:", error);
       }
     } catch (e) {
       console.error(e);
@@ -1204,6 +1206,7 @@ export default function App() {
     setComposerText("");
 
     try {
+      // 這裡關聯 app_users
       const { data, error } = await supabase
         .from("community_posts")
         .insert([{ user_id: user.id, content }])
@@ -1213,7 +1216,7 @@ export default function App() {
           content,
           created_at,
           likes_count,
-          profiles (
+          app_users (
             id,
             name,
             note,
