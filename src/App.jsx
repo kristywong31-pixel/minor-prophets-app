@@ -35,7 +35,8 @@ const theme = {
 function toYouTubeEmbedUrl(url) {
   const raw = String(url || "").trim();
   if (!raw) return "";
-  if (raw.includes("youtube.com/embed/") || raw.includes("youtube-nocookie.com/embed/")) return raw;
+  if (raw.includes("youtube.com/embed/") || raw.includes("youtube-nocookie.com/embed/"))
+    return raw;
 
   const m = raw.match(/(?:youtu\.be\/|v=|\/shorts\/|\/live\/)([A-Za-z0-9_-]{6,})/);
   const id = m?.[1];
@@ -747,7 +748,12 @@ function CourseCard({
     statusIcon = <CheckCircle2 size={18} className="text-green-400" />;
   } else if (isStarted) {
     statusColor = theme.accent;
-    statusIcon = <div className="w-4 h-4 rounded-full border-[3px]" style={{ borderColor: theme.accent }} />;
+    statusIcon = (
+      <div
+        className="w-4 h-4 rounded-full border-[3px]"
+        style={{ borderColor: theme.accent }}
+      />
+    );
   }
 
   const toggleChapter = (ch) => {
@@ -787,7 +793,7 @@ function CourseCard({
       {/* 卡片抬頭 */}
       <button
         type="button"
-        className="w-full p-4 flex items-center justify-between text-left"
+        className="w-full p-4 flex items-center justify-between text左"
         onClick={onToggleExpand}
       >
         <div className="flex items-center gap-4">
@@ -817,7 +823,7 @@ function CourseCard({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="border-t border-white/50"
+            className="border-t border白/50"
           >
             <div className="p-4 space-y-6" style={{ backgroundColor: "rgba(255,255,255,0.6)" }}>
               {/* 讀經區塊 */}
@@ -886,7 +892,7 @@ function CourseCard({
                         href={course.quizUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-center w-full h-9 rounded-full text-[12px] border bg-white transition-all"
+                        className="flex items-center justify-center w-full h-9 rounded-full text-[12px] border bg白 transition-all"
                         style={{ borderColor: "#E5E7EB", color: theme.textMain }}
                       >
                         開始測驗
@@ -924,7 +930,7 @@ function CourseCard({
                       type="button"
                       onClick={() => setAttendance("live", progress?.attendance?.link || "")}
                       className={`flex-1 py-2 rounded-xl text-xs border flex items-center justify-center gap-2 transition-all ${
-                        progress?.attendance?.type === "live" ? "text-white" : "bg-white"
+                        progress?.attendance?.type === "live" ? "text-white" : "bg白"
                       }`}
                       style={{
                         backgroundColor:
@@ -941,7 +947,7 @@ function CourseCard({
                       type="button"
                       onClick={() => setAttendance("replay", progress?.attendance?.link || "")}
                       className={`flex-1 py-2 rounded-xl text-xs border flex items-center justify-center gap-2 transition-all ${
-                        progress?.attendance?.type === "replay" ? "text-white" : "bg-white"
+                        progress?.attendance?.type === "replay" ? "text-white" : "bg白"
                       }`}
                       style={{
                         backgroundColor:
@@ -1282,7 +1288,7 @@ export default function App() {
         quizScore: courseProgress.quizScore,
         attendance: courseProgress.attendance || {},
       }),
-      })
+    })
       .then(() => null)
       .catch(() => {});
   };
@@ -1321,16 +1327,16 @@ export default function App() {
       {/* Dashboard Header */}
       <div className="bg-white rounded-b-3xl shadow-md px-6 pt-6 pb-5 mb-6">
         <div className="flex items-center gap-4 mb-5">
-        <div
-          className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-orange-700 overflow-hidden"
-          style={{ backgroundColor: user.avatarColor || "#F4C7A2" }}
-        >
-          {user.avatarUrl ? (
-            <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
-          ) : (
-            user.name[0]
-          )}
-        </div>
+          <div
+            className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-orange-700 overflow-hidden"
+            style={{ backgroundColor: user.avatarColor || "#F4C7A2" }}
+          >
+            {user.avatarUrl ? (
+              <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+            ) : (
+              user.name[0]
+            )}
+          </div>
           <div className="flex-1">
             <h2 className="text-lg font-bold" style={{ color: theme.textMain }}>
               平安，{user.name}
@@ -1685,7 +1691,7 @@ export default function App() {
       </div>
 
       {/* 個人檔案卡片 */}
-      <div className="bg-white rounded-3xl shadow-md p-4 mb-6">
+      <div className="bg白 rounded-3xl shadow-md p-4 mb-6">
         <h3
           className="text-sm font-bold mb-3"
           style={{ color: theme.textMain }}
@@ -1763,7 +1769,7 @@ export default function App() {
       </div>
 
       {/* 徽章牆 */}
-      <div className="bg-white rounded-3xl shadow-md p-6 mb-6">
+      <div className="bg白 rounded-3xl shadow-md p-6 mb-6">
         <h3
           className="text-sm font-bold mb-4 flex items-center gap-2"
           style={{ color: theme.textMain }}
@@ -1800,13 +1806,13 @@ export default function App() {
           集齊 10 個徽章，可獲得神秘禮物一份！
           （每月合堂，同工派發該月實體徽章）
         </p>
-        <div className="w-full h-2 bg-white/60 rounded-full overflow-hidden mb-1.5">
+        <div className="w-full h-2 bg白/60 rounded-full overflow-hidden mb-1.5">
           <div
-            className="h-full bg-orange-500"
+            className="h-full bg橙-500"
             style={{ width: `${Math.min((totalStats.badges / 10) * 100, 100)}%` }}
           />
         </div>
-        <div className="text-right text-[11px] text-orange-700 font-bold">
+        <div className="text-right text-[11px] text橙-700 font-bold">
           {totalStats.badges} / 10
         </div>
       </div>
@@ -1814,7 +1820,7 @@ export default function App() {
       <button
         type="button"
         onClick={logout}
-        className="w-full mt-8 py-3 text-sm font-medium text-red-400 flex items-center justify-center gap-2"
+        className="w-full mt-8 py-3 text-sm font-medium text紅-400 flex items-center justify-center gap-2"
       >
         <LogOut size={16} /> 登出帳戶
       </button>
@@ -1837,9 +1843,9 @@ export default function App() {
 
       <div className="max-w-md mx-auto min-h-screen bg-gray-50 relative">
         {/* 頂部教會資訊 */}
-        <header className="px-4 pt-6 pb-3 flex items-center justify-between bg-white sticky top-0 z-20 shadow-md">
+        <header className="px-4 pt-6 pb-3 flex items-center justify-between bg白 sticky top-0 z-20 shadow-md">
           <div>
-            <p className="text-[10px] font-semibold tracking-[0.16em] text-orange-500">
+            <p className="text-[10px] font-semibold tracking-[0.16em] text橙-500">
               金巴崙長老會沙田堂
             </p>
             <h1
@@ -1850,7 +1856,7 @@ export default function App() {
             </h1>
           </div>
           <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-orange-700 overflow-hidden"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text橙-700 overflow-hidden"
             style={{ backgroundColor: user.avatarColor || "#F4C7A2" }}
           >
             {user.avatarUrl ? (
@@ -1867,7 +1873,7 @@ export default function App() {
         {activeTab === "profile" && renderProfileTab()}
       </div>
 
-      {/* 底部導航（深藍灰 + blur + 明顯選中狀態） */}
+      {/* 底部導航 */}
       <div className="fixed bottom-0 left-0 right-0 z-50">
         <div className="max-w-md mx-auto">
           <div
@@ -1883,12 +1889,12 @@ export default function App() {
             >
               <div
                 className={`p-1.5 rounded-xl transition-all ${
-                  activeTab === "courses" ? "bg-white/20" : ""
+                  activeTab === "courses" ? "bg白/20" : ""
                 }`}
               >
                 <Home size={22} color="white" />
               </div>
-              <span className="text-[10px] text-white font-medium">課程</span>
+              <span className="text-[10px] text白 font-medium">課程</span>
             </button>
 
             <button
@@ -1900,12 +1906,12 @@ export default function App() {
             >
               <div
                 className={`p-1.5 rounded-xl transition-all ${
-                  activeTab === "community" ? "bg-white/20" : ""
+                  activeTab === "community" ? "bg白/20" : ""
                 }`}
               >
                 <MessageCircle size={22} color="white" />
               </div>
-              <span className="text-[10px] text-white font-medium">社群</span>
+              <span className="text-[10px] text白 font-medium">社群</span>
             </button>
 
             <button
@@ -1917,12 +1923,12 @@ export default function App() {
             >
               <div
                 className={`p-1.5 rounded-xl transition-all ${
-                  activeTab === "profile" ? "bg-white/20" : ""
+                  activeTab === "profile" ? "bg白/20" : ""
                 }`}
               >
                 <User size={22} color="white" />
               </div>
-              <span className="text-[10px] text-white font-medium">個人</span>
+              <span className="text-[10px] text白 font-medium">個人</span>
             </button>
           </div>
         </div>
@@ -1935,31 +1941,31 @@ export default function App() {
             initial={{ opacity: 0, scale: 0.6, y: 40 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.6, y: 40 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg黑/40 backdrop-blur-sm"
             onClick={() => setShowBadgeAlert(null)}
           >
             <div
-              className="bg-white rounded-3xl shadow-2xl p-8 max-w-xs w-full relative overflow-hidden"
+              className="bg白 rounded-3xl shadow-2xl p-8 max-w-xs w-full relative overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                className="absolute -top-12 -left-12 w-40 h-40 bg-yellow-100 rounded-full blur-3xl opacity-60"
+                className="absolute -top-12 -left-12 w-40 h-40 bg黃-100 rounded-full blur-3xl opacity-60"
               />
               <div className="relative mb-4">
-                <div className="w-24 h-24 mx-auto bg-gradient-to-br from-yellow-300 to-orange-400 rounded-full flex items-center justify-center shadow-lg border-4 border-yellow-100">
-                  <Award size={60} className="text-white" />
+                <div className="w-24 h-24 mx-auto bg-gradient-to-br from黃-300 to橙-400 rounded-full flex items-center justify-center shadow-lg border-4 border黃-100">
+                  <Award size={60} className="text白" />
                 </div>
               </div>
-              <h3 className="text-xl font-bold mb-2 text-orange-900">完成解鎖！</h3>
-              <p className="text-sm text-gray-600 mb-6">
+              <h3 className="text-xl font-bold mb-2 text橙-900">完成解鎖！</h3>
+              <p className="text-sm text灰-600 mb-6">
                 您已完成《{showBadgeAlert}》的所有學習內容。
               </p>
               <button
                 type="button"
                 onClick={() => setShowBadgeAlert(null)}
-                className="w-full py-3 rounded-xl font-semibold text-sm text-white shadow-md hover:shadow-lg transition-all"
+                className="w-full py-3 rounded-xl font-semibold text-sm text白 shadow-md hover:shadow-lg transition-all"
                 style={{ backgroundColor: theme.accent }}
               >
                 收下這枚徽章
