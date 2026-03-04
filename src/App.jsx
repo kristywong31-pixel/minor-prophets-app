@@ -24,13 +24,10 @@ import { createClient } from '@supabase/supabase-js';
 
 // ------------------------------------------------------------------
 // ⚠️ 設定 Supabase 客戶端
-// 為了確保程式碼可以獨立運作，這裡直接初始化。
-// 請確保你的專案環境變數 (.env) 已設定，或在此處填入你的 URL 和 Key。
 // ------------------------------------------------------------------
 const supabaseUrl = "https://lscogljctrempxjwtwue.supabase.co"; 
-const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzY29nbGpjdHJlbXB4and0d3VlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0NzY1OTQsImV4cCI6MjA4ODA1MjU5NH0.zisZlYu6UmbpA6tUNP6wBzxcFoVzpGFYn9gmIoZxzz8"; // 那串很長的字
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzY29nbGpjdHJlbXB4and0d3VlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0NzY1OTQsImV4cCI6MjA4ODA1MjU5NH0.zisZlYu6UmbpA6tUNP6wBzxcFoVzpGFYn9gmIoZxzz8";
 
-// 建立客戶端 (如果沒有 key 則不建立，避免報錯)
 const supabase = (supabaseUrl && supabaseAnonKey) 
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
@@ -48,7 +45,7 @@ const theme = {
 
 const AVATAR_COLORS = ["#F4C7A2", "#F1B0AE", "#E8CE97", "#C9D8A7", "#B4C8E0"];
 
-// === 課程資料 (保持不變) ===
+// === 課程資料 ===
 const COURSES = [
   {
     id: 1,
@@ -192,7 +189,6 @@ function formatPostDate(input) {
   return `${dd}-${mm}-${yy}`;
 }
 
-// 整理貼文資料
 function normalizeCommunityPosts(rows) {
   const list = Array.isArray(rows) ? rows : [];
   return list.map((r) => {
@@ -225,7 +221,6 @@ function isCompleteCourse(courseId, progress) {
   return readingDone && quizDone && attendDone;
 }
 
-// 圖片壓縮
 function compressImageToBlob(file) {
   return new Promise((resolve, reject) => {
     if (!file || !file.type.startsWith("image/")) {
@@ -747,7 +742,7 @@ export default function App() {
       if (error || !profile) {
         // [Self-healing] 如果有 session 但沒 profile (可能是註冊時寫入失敗)，嘗試重建
         console.log("Profile missing for session, attempting to recreate...");
-        const fullName = session.user.user_metadata?.full_name || "學員";
+        const fullName = session.user.user_metadata?.name || "學員";
         
         const { data: newProfile, error: createErr } = await supabase
           .from("app_users")
@@ -789,7 +784,7 @@ export default function App() {
     };
   }, []);
 
-  // === 2. 修正後的 Auth 邏輯 ===
+  // === 2. 修正後的 Auth 邏輯 (確保變數名稱正確) ===
   const handleAuth = async ({ mode, payload }) => {
     if (!supabase) {
       setAuthError("未設定 Supabase 連線，請檢查 .env");
@@ -801,63 +796,44 @@ export default function App() {
     const password = (payload.password || "").trim();
     
     // 使用偽造 email 進行登入
-    // ⚠️ 確保 email 不包含空白
     const email = `${name}@fake.local`;
 
     try {
       if (mode === "register") {
         // 1. 註冊 Supabase Auth
+        // 這裡傳入 metadata: { name: ... } 讓 SQL Trigger 可以抓到
         const { data, error } = await supabase.auth.signUp({
           email: email,
           password: password,
           options: {
             data: {
-              name: '陳大文', // <--- 重點：這裡要傳個名過去，Trigger 先至捉得到
+              name: name, 
             },
           },
-        })
+        });
 
-        if (signUpErr) {
-          if (signUpErr.message.includes("already registered")) {
+        if (error) {
+          if (error.message.includes("already registered")) {
             throw new Error("此名字已被註冊，請直接登入。");
           }
-          throw signUpErr;
+          throw error;
         }
 
-        if (!signUpData.user) {
-          // 如果開啟了 Confirm Email，這裡可能會沒有 Session
+        if (!data.user) {
           throw new Error("註冊成功，但無法自動登入。請確認是否需要驗證信箱，或直接嘗試登入。");
         }
 
-        // 2. 寫入 app_users
-        // 使用 upsert 避免 race condition
-        const { data: profile, error: profileErr } = await supabase
-          .from("app_users")
-          .upsert([
-            {
-              id: signUpData.user.id,
-              name,
-              note: "主恩滿溢",
-              avatar_url: null,
-              avatar_color: randomAvatarColor(),
-            },
-          ])
-          .select()
-          .single();
-
-        if (profileErr) {
-          console.error("Profile creation failed:", profileErr);
-          // 雖然 Auth 成功但 Profile 失敗，這是一個邊緣情況
-          // 我們不拋出錯誤，讓 useEffect 的 Self-healing 機制去處理
-        } else {
-            setUser({
-              id: profile.id,
-              name: profile.name,
-              note: profile.note,
-              avatarColor: profile.avatar_color,
-              avatarUrl: profile.avatar_url,
-            });
-        }
+        // 2. 註冊成功後，通常會自動登入 (除非開啟了 Confirm Email)
+        // 因為有 SQL Trigger，我們不需要手動 insert app_users
+        // 但為了 UI 反應快，我們直接設定 user state
+        // (如果 Trigger 慢了，這裡只是暫時的 UI 狀態)
+        setUser({
+          id: data.user.id,
+          name: name,
+          note: "主恩滿溢",
+          avatarColor: randomAvatarColor(),
+          avatarUrl: null,
+        });
         setActiveTab("courses");
 
       } else {
