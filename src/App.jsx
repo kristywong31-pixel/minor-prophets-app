@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
   BookOpen,
-  CheckCircle,
   CheckCircle2,
   Circle,
   Award,
@@ -20,6 +19,8 @@ import {
   Heart,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "./supabaseClient";
+import bcrypt from "bcryptjs";
 
 // === Design System ===
 const theme = {
@@ -31,6 +32,140 @@ const theme = {
   success: "#7A9E7E",
   gray: "#9CA3AF",
 };
+
+const AVATAR_COLORS = ["#F4C7A2", "#F1B0AE", "#E8CE97", "#C9D8A7", "#B4C8E0"];
+
+// === 課程資料 ===
+const COURSES = [
+  {
+    id: 1,
+    date: "2026.03.05",
+    title: "何西阿書",
+    speaker: "蕭楚剛牧師",
+    chapters: 14,
+    badgeKey: "hosea",
+    // 更新連結：何西阿書--小測驗
+    quizUrl: "https://docs.google.com/forms/d/e/1FAIpQLSdjaoKXvSscCkUv8yQ-b4XsEAzyuQqtp3qoANB1TP4V9DKf3w/viewform?usp=send_form",
+    youtubeLink: "",
+  },
+  {
+    id: 2,
+    date: "2026.04.02",
+    title: "約珥書",
+    speaker: "梁浩威傳道",
+    chapters: 3,
+    badgeKey: "joel",
+    // 更新連結：約珥書--小測驗
+    quizUrl: "https://docs.google.com/forms/d/e/1FAIpQLSeBMksdl9SIpXxFxHYiyD3Rsg9q_my42S9AeWzCSw1oS3F91Q/closedform",
+    youtubeLink: "",
+  },
+  {
+    id: 3,
+    date: "2026.05.07",
+    title: "阿摩斯書",
+    speaker: "林凱倫傳道",
+    chapters: 9,
+    badgeKey: "amos",
+    // 更新連結：阿摩司書--小測驗
+    quizUrl: "https://docs.google.com/forms/d/e/1FAIpQLSdwGSlCBhG1wzj7sMhfVz_NjXC5157bd7f3MTMVI_OnnVu-1g/closedform",
+    youtubeLink: "",
+  },
+  {
+    id: 4,
+    date: "2026.06.04",
+    title: "約拿書",
+    speaker: "林素華傳道",
+    chapters: 4,
+    badgeKey: "jonah",
+    // 更新連結：約拿書--小測驗
+    quizUrl: "https://docs.google.com/forms/d/e/1FAIpQLSfmJ2HxVbtyG1C8gzKiNHx_sHuHPlH3xNHMI0DpDAd3R8oitw/closedform",
+    youtubeLink: "",
+  },
+  {
+    id: 5,
+    date: "2026.07.02",
+    title: "彌迦書",
+    speaker: "徐天睿弟兄",
+    chapters: 7,
+    badgeKey: "micah",
+    // 更新連結：彌迦書--小測驗
+    quizUrl: "https://docs.google.com/forms/d/e/1FAIpQLSdGtw2tbu7JtuKVe5kvWx4x-o1B7VOy0o8Xlwn5-S90GaboSQ/closedform",
+    youtubeLink: "",
+  },
+  {
+    id: 6,
+    date: "2026.08.06",
+    title: "那鴻書",
+    speaker: "冼浚瑋弟兄",
+    chapters: 3,
+    badgeKey: "nahum",
+    // 更新連結：那鴻書--小測驗
+    quizUrl: "https://docs.google.com/forms/d/e/1FAIpQLSeuDay0xYrMkrvQTbt71R2MnRmJV0EuANxy8FIPqG2yepBpDQ/closedform",
+    youtubeLink: "",
+  },
+  {
+    id: 7,
+    date: "2026.09.03",
+    title: "哈巴谷書",
+    speaker: "梁浩威傳道",
+    chapters: 3,
+    badgeKey: "habakkuk",
+    // 更新連結：哈巴谷書--小測驗
+    quizUrl: "https://docs.google.com/forms/d/e/1FAIpQLSes72P2yUiuGLv88ER9Ihl_9WxFh2m07Kzq5fBJ7yL6eNv9OA/closedform",
+    youtubeLink: "",
+  },
+  {
+    id: 8,
+    date: "2026.10.08",
+    title: "西番亞書",
+    speaker: "林凱倫傳道",
+    chapters: 3,
+    badgeKey: "zephaniah",
+    // 更新連結：西番亞書--小測驗
+    quizUrl: "https://docs.google.com/forms/d/e/1FAIpQLSdgeo78ClO7pRtT4uUtFD9G-_249DYKmsohzSJGvj4SnpIX6A/closedform",
+    youtubeLink: "",
+  },
+  {
+    id: 9,
+    date: "2026.11.05",
+    title: "哈該書",
+    speaker: "林素華傳道",
+    chapters: 2,
+    badgeKey: "haggai",
+    // 更新連結：哈該書--小測驗
+    quizUrl: "https://docs.google.com/forms/d/e/1FAIpQLSeifBUeVBjcQglcA1QUCn8p1dBffjJQ0palMGZmpuPDH0R20A/closedform",
+    youtubeLink: "",
+  },
+  {
+    id: 10,
+    date: "2026.12.03",
+    title: "瑪拉基書",
+    speaker: "蕭楚剛牧師",
+    chapters: 4,
+    badgeKey: "malachi",
+    // 更新連結：瑪拉基書--小測驗
+    quizUrl: "https://docs.google.com/forms/d/e/1FAIpQLScPYHdSgxEJmrcCl2CdDod4nuaQ8tLfWwZ2HcYus9-G5xXZCQ/closedform",
+    youtubeLink: "",
+  },
+];
+
+const BADGE_IMAGE_PATHS = {
+  hosea: "/badges/hosea.png",
+  joel: "/badges/joel.png",
+  amos: "/badges/amos.png",
+  jonah: "/badges/jonah.png",
+  micah: "/badges/micah.png",
+  nahum: "/badges/nahum.png",
+  habakkuk: "/badges/habakkuk.png",
+  zephaniah: "/badges/zephaniah.png",
+  haggai: "/badges/haggai.png",
+  malachi: "/badges/malachi.png",
+};
+
+// === Helpers ===
+function randomAvatarColor() {
+  return AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
+}
 
 function toYouTubeEmbedUrl(url) {
   const raw = String(url || "").trim();
@@ -54,36 +189,41 @@ function formatPostDate(input) {
   return `${dd}-${mm}-${yy}`;
 }
 
-function normalizeCommunityPosts(rawPosts) {
-  const list = Array.isArray(rawPosts) ? rawPosts : [];
-  return list.map((p) => {
-    const createdAt = p.createdAt || p.created_at || p.created_at || new Date().toISOString();
+// Supabase community_posts + profiles → 前端用的結構
+function normalizeCommunityPosts(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  return list.map((r) => {
+    const createdAt = r.created_at || r.createdAt || new Date().toISOString();
+    const u = r.profiles || r.user || {};
     return {
-      id: p.id,
-      author: p.author || p.userName || "友",
-      content: p.content || "",
-      note: p.note || "",
-      likes: typeof p.likes === "number" ? p.likes : 0,
-      isLiked: !!(p.isLiked ?? p.liked),
+      id: r.id,
+      author: u.name || "友",
+      content: r.content || "",
+      note: u.note || "",
+      likes: r.likes_count ?? 0,
+      isLiked: !!r.is_liked,
       time: formatPostDate(createdAt),
       createdAt,
-      avatarColor: p.avatarColor || null,
-      avatarUrl: p.avatarUrl || null,
-      badge: p.badge || null,
+      avatarColor: u.avatar_color || null,
+      avatarUrl: u.avatar_url || null,
+      badge: null,
     };
   });
 }
 
-const AVATAR_COLORS = ["#F4C7A2", "#F1B0AE", "#E8CE97", "#C9D8A7", "#B4C8E0"];
+function isCompleteCourse(courseId, progress) {
+  const course = COURSES.find((c) => c.id === courseId);
+  if (!course) return false;
+  const readingDone = (progress.chapters?.length || 0) === course.chapters;
+  const quizDone = progress.quizScore !== undefined && progress.quizScore !== null;
+  const attendDone =
+    progress.attendance &&
+    (progress.attendance.type === "live" || progress.attendance.type === "replay");
+  return readingDone && quizDone && attendDone;
+}
 
-const STORAGE = {
-  profile: "mp_user_profile",
-  learning: "app_learning_data",
-  community: "mp_community_posts",
-};
-
-// 將上載圖片壓縮成 300x300 以內、JPEG 70% 的 Base64
-function compressImage(file) {
+// 將上載圖片壓縮成 300x300 以內、JPEG 70% 的 Blob
+function compressImageToBlob(file) {
   return new Promise((resolve, reject) => {
     if (!file || !file.type.startsWith("image/")) {
       return reject(new Error("請選擇圖片檔案。"));
@@ -123,16 +263,19 @@ function compressImage(file) {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-          const quality = 0.7;
-          const compressedDataUrl = canvas.toDataURL("image/jpeg", quality);
-
-          // 簡單大小檢查（約略 < 4MB）
-          const approxBytes = (compressedDataUrl.length * 3) / 4;
-          if (approxBytes > 4 * 1024 * 1024) {
-            return reject(new Error("圖片仍然過大，請選擇較小的圖片。"));
-          }
-
-          resolve(compressedDataUrl);
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                return reject(new Error("圖片壓縮失敗。"));
+              }
+              if (blob.size > 4 * 1024 * 1024) {
+                return reject(new Error("圖片仍然過大，請選擇較小的圖片。"));
+              }
+              resolve(blob);
+            },
+            "image/jpeg",
+            0.7
+          );
         } catch (e) {
           reject(e);
         }
@@ -145,411 +288,16 @@ function compressImage(file) {
   });
 }
 
-function computeEarnedBadgesFromProgress(progressByCourse) {
-  const badges = [];
-  COURSES.forEach((c) => {
-    const p = progressByCourse?.[c.id];
-    if (!p) return;
-    const readingDone = (p.chapters?.length || 0) === c.chapters;
-    const quizDone = p.quizScore !== undefined && p.quizScore !== null;
-    const attendDone =
-      p.attendance && (p.attendance.type === "live" || p.attendance.type === "replay");
-    if (readingDone && quizDone && attendDone) {
-      badges.push(c.badgeKey);
-    }
-  });
-  return badges;
+async function hashPassword(plain) {
+  return bcrypt.hash(plain, 10);
 }
 
-async function apiFetch(path, options = {}) {
-  const method = (options.method || "GET").toUpperCase();
-
-  const apiError = (msg, status = 400) => {
-    const err = new Error(msg);
-    err.status = status;
-    return Promise.reject(err);
-  };
-
-  if (typeof window === "undefined" || !window.localStorage) {
-    return apiError("Local storage is not available.", 500);
-  }
-
-  const ls = window.localStorage;
-
-  // --- 初始化 Mock Database ---
-  const ensureArrayKey = (key) => {
-    if (!ls.getItem(key)) {
-      ls.setItem(key, JSON.stringify([]));
-    }
-  };
-  ensureArrayKey("app_users");
-  ensureArrayKey("app_posts");
-  ensureArrayKey("app_progress");
-
-  const readArray = (key) => {
-    try {
-      const raw = ls.getItem(key);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  };
-
-  const writeArray = (key, value) => {
-    try {
-      ls.setItem(key, JSON.stringify(value));
-    } catch {
-      // ignore
-    }
-  };
-
-  const getSessionUser = () => {
-    try {
-      const raw = ls.getItem("current_user_session");
-      if (!raw) return null;
-      return JSON.parse(raw);
-    } catch {
-      return null;
-    }
-  };
-
-  const setSessionUser = (user) => {
-    try {
-      ls.setItem("current_user_session", JSON.stringify(user));
-    } catch {
-      // ignore
-    }
-  };
-
-  const clearSession = () => {
-    try {
-      ls.removeItem("current_user_session");
-    } catch {
-      // ignore
-    }
-  };
-
-  const parseBody = () => {
-    if (!options.body) return {};
-    try {
-      return JSON.parse(options.body);
-    } catch {
-      return {};
-    }
-  };
-
-  // === Auth & Profile ===
-
-  if (path === "/api/me") {
-    const sessionUser = getSessionUser();
-    if (!sessionUser) return apiError("未登入", 401);
-    return Promise.resolve({ user: sessionUser });
-  }
-
-  if (path === "/api/auth/register" && method === "POST") {
-    const body = parseBody();
-    const name = (body.name || "").trim();
-    const password = body.password || "";
-    if (!name) return apiError("請輸入真實姓名。", 400);
-    if (password.length < 6) return apiError("註冊密碼需至少 6 個字元。", 400);
-
-    const users = readArray("app_users");
-    if (users.some((u) => u.name === name)) {
-      return apiError("此姓名已建立帳號，請改用登入或換一個稱呼。", 409);
-    }
-
-    const newUser = {
-      id: `u_${Date.now()}`,
-      name,
-      password,
-      note: body.note || "主恩滿溢",
-      avatarColor: body.avatarColor || null,
-      avatarUrl: body.avatarUrl || null,
-    };
-    users.push(newUser);
-    writeArray("app_users", users);
-    const { password: _p, ...safeUser } = newUser;
-    setSessionUser(safeUser);
-    return Promise.resolve({ user: safeUser });
-  }
-
-  if (path === "/api/auth/login" && method === "POST") {
-    const body = parseBody();
-    const name = (body.name || "").trim();
-    const password = (body.password || "").trim();
-
-    const users = readArray("app_users");
-    // Debug logging：顯示目前資料庫與輸入（密碼改用長度顯示）
-    console.log("[auth/login] users from localStorage:", users);
-    console.log("[auth/login] input:", {
-      name,
-      passwordLength: password.length,
-    });
-
-    if (!name || !password) return apiError("姓名或密碼不正確。", 401);
-
-    const user = users.find((u) => u.name === name);
-    if (!user) {
-      return apiError("找不到此帳號，請先建立新帳號", 401);
-    }
-
-    if ((user.password || "").trim() !== password) {
-      return apiError("密碼不正確", 401);
-    }
-
-    const { password: _p, ...safeUser } = user;
-    setSessionUser(safeUser);
-    return Promise.resolve({ user: safeUser });
-  }
-
-  if (path === "/api/auth/logout") {
-    clearSession();
-    return Promise.resolve({ ok: true });
-  }
-
-  if (path === "/api/profile/update" && method === "PATCH") {
-    const sessionUser = getSessionUser();
-    if (!sessionUser) return apiError("未登入", 401);
-    const body = parseBody();
-    const users = readArray("app_users");
-    const idx = users.findIndex((u) => u.id === sessionUser.id);
-    if (idx === -1) return apiError("找不到使用者。", 404);
-    const updated = {
-      ...users[idx],
-      ...body,
-    };
-    users[idx] = updated;
-    writeArray("app_users", users);
-    const { password: _p, ...safeUser } = updated;
-    setSessionUser(safeUser);
-    return Promise.resolve({ user: safeUser });
-  }
-
-  // === Community Posts ===
-
-  if ((path === "/api/community/posts" || path === "/api/community/list") && method === "GET") {
-    const sessionUser = getSessionUser();
-    if (!sessionUser) return apiError("未登入", 401);
-    const users = readArray("app_users");
-    const posts = readArray("app_posts");
-
-    const joined = posts
-      .sort((a, b) => (a.createdAt || "").localeCompare(b.createdAt || ""))
-      .map((p) => {
-        const u = users.find((x) => x.id === p.userId);
-        return {
-          id: p.id,
-          userName: u?.name || "友",
-          note: u?.note || "",
-          avatarColor: u?.avatarColor || null,
-          avatarUrl: u?.avatarUrl || null,
-          badge: null,
-          content: p.content || "",
-          createdAt: p.createdAt || new Date().toISOString(),
-          liked: false,
-        };
-      });
-
-    return Promise.resolve({ posts: joined });
-  }
-
-  if (path === "/api/community/post" && method === "POST") {
-    const sessionUser = getSessionUser();
-    if (!sessionUser) return apiError("未登入", 401);
-    const body = parseBody();
-    const content = (body.content || "").trim();
-    if (!content) return apiError("內容不可為空", 400);
-
-    const posts = readArray("app_posts");
-    const newPost = {
-      id: `p_${Date.now()}`,
-      userId: sessionUser.id,
-      content,
-      createdAt: new Date().toISOString(),
-    };
-    posts.push(newPost);
-    writeArray("app_posts", posts);
-    return Promise.resolve({ id: newPost.id, post: newPost });
-  }
-
-  // === Course Progress ===
-
-  if (path === "/api/course/progress" || path === "/api/progress/update") {
-    if (method !== "PATCH") {
-      return apiError("Method Not Allowed", 405);
-    }
-    const sessionUser = getSessionUser();
-    if (!sessionUser) return apiError("未登入", 401);
-    const body = parseBody();
-    const courseId = body.courseId;
-    if (!courseId) return apiError("courseId 不正確", 400);
-
-    const progress = readArray("app_progress");
-    const idx = progress.findIndex(
-      (r) => r.userId === sessionUser.id && r.courseId === courseId
-    );
-    const record = {
-      userId: sessionUser.id,
-      courseId,
-      chapters: body.chapters || [],
-      quizScore:
-        body.quizScore === undefined || body.quizScore === null
-          ? null
-          : body.quizScore,
-      attendance: body.attendance || {},
-    };
-    if (idx === -1) progress.push(record);
-    else progress[idx] = record;
-    writeArray("app_progress", progress);
-    return Promise.resolve({ ok: true });
-  }
-
-  if (path === "/api/progress/get" && method === "GET") {
-    const sessionUser = getSessionUser();
-    if (!sessionUser) return apiError("未登入", 401);
-    const progress = readArray("app_progress");
-    const mine = progress.filter((r) => r.userId === sessionUser.id);
-    const map = {};
-    for (const r of mine) {
-      map[r.courseId] = {
-        chapters: r.chapters || [],
-        quizScore:
-          r.quizScore === undefined || r.quizScore === null ? undefined : r.quizScore,
-        attendance: r.attendance || {},
-      };
-    }
-    return Promise.resolve({ progress: map });
-  }
-
-  // 其他 API 請求：安全回傳空物件
-  return Promise.resolve({});
+async function verifyPassword(plain, hash) {
+  if (!hash) return false;
+  return bcrypt.compare(plain, hash);
 }
 
-// === 資料設定 ===
-const COURSES = [
-  {
-    id: 1,
-    date: "2026.03.05",
-    title: "何西阿書",
-    speaker: "蕭楚剛牧師",
-    chapters: 14,
-    badgeKey: "hosea",
-    quizUrl: "https://forms.gle/pcEMSJonaJKZCudg7", // 更新為您提供的連結
-    youtubeLink: "",
-  },
-  {
-    id: 2,
-    date: "2026.04.02",
-    title: "約珥書",
-    speaker: "梁浩威傳道",
-    chapters: 3,
-    badgeKey: "joel",
-    quizUrl: "https://forms.gle/K5WdHcv3Ub6DgDKJ7",
-    youtubeLink: "",
-  },
-  {
-    id: 3,
-    date: "2026.05.07",
-    title: "阿摩斯書",
-    speaker: "林凱倫傳道",
-    chapters: 9,
-    badgeKey: "amos",
-    quizUrl: "https://forms.gle/pyPVwXHUzMjmHjsw9",
-    youtubeLink: "",
-  },
-  {
-    id: 4,
-    date: "2026.06.04",
-    title: "約拿書",
-    speaker: "林素華傳道",
-    chapters: 4,
-    badgeKey: "jonah",
-    quizUrl: "https://forms.gle/9eqvNNaxKFYEVkyZ6",
-    youtubeLink: "",
-  },
-  {
-    id: 5,
-    date: "2026.07.02",
-    title: "彌迦書",
-    speaker: "徐天睿弟兄",
-    chapters: 7,
-    badgeKey: "micah",
-    quizUrl: "https://forms.gle/mKQhQeNFZvbx1tSQA",
-    youtubeLink: "",
-  },
-  {
-    id: 6,
-    date: "2026.08.06",
-    title: "那鴻書",
-    speaker: "冼浚瑋弟兄",
-    chapters: 3,
-    badgeKey: "nahum",
-    quizUrl: "https://forms.gle/4P4fMkKNMHfP9o4j7",
-    youtubeLink: "",
-  },
-  {
-    id: 7,
-    date: "2026.09.03",
-    title: "哈巴谷書",
-    speaker: "梁浩威傳道",
-    chapters: 3,
-    badgeKey: "habakkuk",
-    quizUrl: "https://forms.gle/mmQP3po4oTHG6pPdA",
-    youtubeLink: "",
-  },
-  {
-    id: 8,
-    date: "2026.10.08",
-    title: "西番亞書",
-    speaker: "林凱倫傳道",
-    chapters: 3,
-    badgeKey: "zephaniah",
-    quizUrl: "https://forms.gle/8mFrAwmjRi2dx4vH7",
-    youtubeLink: "",
-  },
-  {
-    id: 9,
-    date: "2026.11.05",
-    title: "哈該書",
-    speaker: "林素華傳道",
-    chapters: 2,
-    badgeKey: "haggai",
-    quizUrl: "https://forms.gle/KX1yh4vTM6CT2YdH6",
-    youtubeLink: "",
-  },
-  {
-    id: 10,
-    date: "2026.12.03",
-    title: "瑪拉基書",
-    speaker: "蕭楚剛牧師",
-    chapters: 4,
-    badgeKey: "malachi",
-    quizUrl: "https://forms.gle/ey7hSCsm6SjeviZ2A",
-    youtubeLink: "",
-  },
-];
-
-const BADGE_IMAGE_PATHS = {
-  hosea: "/badges/hosea.png",
-  joel: "/badges/joel.png",
-  amos: "/badges/amos.png",
-  jonah: "/badges/jonah.png",
-  micah: "/badges/micah.png",
-  nahum: "/badges/nahum.png",
-  habakkuk: "/badges/habakkuk.png",
-  zephaniah: "/badges/zephaniah.png",
-  haggai: "/badges/haggai.png",
-  malachi: "/badges/malachi.png",
-};
-
-// === 小工具 ===
-function randomAvatarColor() {
-  return AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
-}
-
-// === Auth 畫面：以「姓名 + 密碼」為主 ===
+// === Auth 畫面 ===
 function AuthScreen({ onAuth, error }) {
   const [isRegister, setIsRegister] = useState(false);
   const [name, setName] = useState("");
@@ -744,7 +492,7 @@ function CourseCard({
   let statusColor = theme.gray;
   let statusIcon = <Circle size={18} />;
   if (isComplete) {
-    statusColor = "#4ade80"; // Tailwind text-green-400 類似色
+    statusColor = "#4ade80";
     statusIcon = <CheckCircle2 size={18} className="text-green-400" />;
   } else if (isStarted) {
     statusColor = theme.accent;
@@ -769,19 +517,9 @@ function CourseCard({
 
   const handleFinishQuiz = () => {
     if (isQuizDone) return;
-    const newProgress = { ...progress, quizScore: 100 }; // 固定視為完成
-    const maybePromise = onUpdateProgress(course.id, newProgress);
-    if (maybePromise && typeof maybePromise.then === "function") {
-      maybePromise
-        .then(() => {
-          alert("小測已標記完成。");
-        })
-        .catch(() => {
-          alert("標記失敗，請稍後再試。");
-        });
-    } else {
-      alert("小測已標記完成。");
-    }
+    const newProgress = { ...progress, quizScore: 100 };
+    onUpdateProgress(course.id, newProgress);
+    alert("小測已標記完成。");
   };
 
   return (
@@ -793,7 +531,7 @@ function CourseCard({
       {/* 卡片抬頭 */}
       <button
         type="button"
-        className="w-full p-4 flex items-center justify-between text左"
+        className="w-full p-4 flex items-center justify-between text-left"
         onClick={onToggleExpand}
       >
         <div className="flex items-center gap-4">
@@ -823,7 +561,7 @@ function CourseCard({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="border-t border白/50"
+            className="border-t border-white/50"
           >
             <div className="p-4 space-y-6" style={{ backgroundColor: "rgba(255,255,255,0.6)" }}>
               {/* 讀經區塊 */}
@@ -892,7 +630,7 @@ function CourseCard({
                         href={course.quizUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-center w-full h-9 rounded-full text-[12px] border bg白 transition-all"
+                        className="flex items-center justify-center w-full h-9 rounded-full text-[12px] border bg-white transition-all"
                         style={{ borderColor: "#E5E7EB", color: theme.textMain }}
                       >
                         開始測驗
@@ -930,7 +668,7 @@ function CourseCard({
                       type="button"
                       onClick={() => setAttendance("live", progress?.attendance?.link || "")}
                       className={`flex-1 py-2 rounded-xl text-xs border flex items-center justify-center gap-2 transition-all ${
-                        progress?.attendance?.type === "live" ? "text-white" : "bg白"
+                        progress?.attendance?.type === "live" ? "text-white" : "bg-white"
                       }`}
                       style={{
                         backgroundColor:
@@ -947,7 +685,7 @@ function CourseCard({
                       type="button"
                       onClick={() => setAttendance("replay", progress?.attendance?.link || "")}
                       className={`flex-1 py-2 rounded-xl text-xs border flex items-center justify-center gap-2 transition-all ${
-                        progress?.attendance?.type === "replay" ? "text-white" : "bg白"
+                        progress?.attendance?.type === "replay" ? "text-white" : "bg-white"
                       }`}
                       style={{
                         backgroundColor:
@@ -993,138 +731,250 @@ export default function App() {
   const [authError, setAuthError] = useState("");
   const [activeTab, setActiveTab] = useState("courses");
   const [expandedCourseId, setExpandedCourseId] = useState(null);
-  const [progressByUser, setProgressByUser] = useState({}); // { [courseId]: progress }
-  const [quizCompletion, setQuizCompletion] = useState({}); // { [courseId]: true }
+  const [progressByUser, setProgressByUser] = useState({});
+  const [quizCompletion, setQuizCompletion] = useState({});
   const [posts, setPosts] = useState([]);
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerText, setComposerText] = useState("");
   const [composerError, setComposerError] = useState("");
   const [composerBusy, setComposerBusy] = useState(false);
-  const [likeBursts, setLikeBursts] = useState({}); // { [postId]: number }
   const [showBadgeAlert, setShowBadgeAlert] = useState(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [noteSaved, setNoteSaved] = useState(false);
 
-  // 讀取登入狀態（HttpOnly cookie）
+  // === 1. 從 Supabase session 載入 user + profile ===
   useEffect(() => {
     let mounted = true;
-    apiFetch("/api/me")
-      .then((r) => {
-        if (!mounted) return;
-        setUser(r.user);
-      })
-      .catch(() => {
-        if (!mounted) return;
+    (async () => {
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
+      if (!mounted) return;
+
+      if (!authUser) {
         setUser(null);
+        return;
+      }
+
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("id, name, note, avatar_url, avatar_color, password_hash")
+        .eq("id", authUser.id)
+        .single();
+
+      if (error || !profile) {
+        console.error("[profiles/get] error:", error);
+        setUser(null);
+        return;
+      }
+
+      setUser({
+        id: profile.id,
+        name: profile.name,
+        note: profile.note || "主恩滿溢",
+        avatarColor: profile.avatar_color || randomAvatarColor(),
+        avatarUrl: profile.avatar_url || null,
       });
+    })();
     return () => {
       mounted = false;
     };
   }, []);
 
-  // 讀取本地 Profile（localStorage）
-  useEffect(() => {
-    if (!user) return;
+  // === 2. Auth：註冊 / 登入 ===
+  const handleAuth = async ({ mode, payload }) => {
+    setAuthError("");
+    const name = (payload.name || "").trim();
+    const password = (payload.password || "").trim();
+
     try {
-      const raw = window.localStorage.getItem(STORAGE.profile);
-      if (!raw) return;
-      const all = JSON.parse(raw);
-      const saved = all?.[user.id];
-      if (!saved) return;
-      // 以本地為優先（使用者最後一次修改）
-      setUser((prev) => ({ ...prev, ...saved }));
-      setNoteDraft(saved.note || "");
-    } catch {
-      // ignore
+      if (mode === "register") {
+        if (!name || password.length < 6) {
+          throw new Error("註冊密碼需至少 6 個字元。");
+        }
+
+        // 檢查是否已有同名
+        const { data: exists, error: existsErr } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("name", name)
+          .maybeSingle();
+        if (existsErr) {
+          console.error(existsErr);
+        }
+        if (exists) {
+          throw new Error("此姓名已建立帳號，請改用登入或換一個稱呼。");
+        }
+
+        const { data: signUpRes, error: signUpErr } = await supabase.auth.signUp({
+          email: `${name}@fake.local`,
+          password,
+        });
+        if (signUpErr || !signUpRes.user) {
+          console.error(signUpErr);
+          throw new Error("註冊失敗，請稍後再試。");
+        }
+
+        const passwordHash = await hashPassword(password);
+
+        const { data: profile, error: profileErr } = await supabase
+          .from("profiles")
+          .insert([
+            {
+              id: signUpRes.user.id,
+              name,
+              note: "主恩滿溢",
+              avatar_url: null,
+              avatar_color: randomAvatarColor(),
+              password_hash: passwordHash,
+            },
+          ])
+          .select("*")
+          .single();
+
+        if (profileErr || !profile) {
+          console.error(profileErr);
+          throw new Error("建立個人資料失敗。");
+        }
+
+        setUser({
+          id: profile.id,
+          name: profile.name,
+          note: profile.note || "主恩滿溢",
+          avatarColor: profile.avatar_color || randomAvatarColor(),
+          avatarUrl: profile.avatar_url || null,
+        });
+        setActiveTab("courses");
+      } else {
+        // login
+        if (!name || !password) throw new Error("請輸入姓名與密碼。");
+
+        const { data: profile, error: profileErr } = await supabase
+          .from("profiles")
+          .select("id, name, note, avatar_url, avatar_color, password_hash")
+          .eq("name", name)
+          .single();
+
+        if (profileErr || !profile) {
+          throw new Error("找不到此帳號，請先建立新帳號");
+        }
+
+        const ok = await verifyPassword(password, profile.password_hash);
+        if (!ok) throw new Error("密碼不正確");
+
+        const { error: signInErr } = await supabase.auth.signInWithPassword({
+          email: `${name}@fake.local`,
+          password,
+        });
+        if (signInErr) {
+          console.error(signInErr);
+          throw new Error("登入失敗，請稍後再試。");
+        }
+
+        setUser({
+          id: profile.id,
+          name: profile.name,
+          note: profile.note || "主恩滿溢",
+          avatarColor: profile.avatar_color || randomAvatarColor(),
+          avatarUrl: profile.avatar_url || null,
+        });
+        setActiveTab("courses");
+      }
+    } catch (e) {
+      setAuthError(e.message || "登入/註冊失敗");
     }
-  }, [user?.id]);
+  };
 
-  // 當後端或本地 user.note 變更時，同步到草稿，但不觸發自動儲存
+  // === 3. 讀取課程進度 ===
   useEffect(() => {
     if (!user) return;
-    setNoteDraft(user.note || "");
-    setNoteSaved(false);
-  }, [user?.note]);
+    let mounted = true;
 
-  // 讀取本地進度（localStorage）
-  useEffect(() => {
-    if (!user) return;
-    try {
-      const raw = window.localStorage.getItem(STORAGE.learning);
-      if (!raw) return;
-      const all = JSON.parse(raw);
-      const saved = all?.[user.id];
-      if (!saved || !saved.courses) return;
-      const coursesProgress = saved.courses || {};
-      setProgressByUser(coursesProgress);
+    (async () => {
+      const { data, error } = await supabase
+        .from("course_progress")
+        .select("*")
+        .eq("user_id", user.id);
+
+      if (!mounted) return;
+      if (error) {
+        console.error("[course_progress/get] error:", error);
+        return;
+      }
+
+      const map = {};
+      (data || []).forEach((row) => {
+        map[row.course_id] = {
+          chapters: row.chapters || [],
+          quizScore:
+            row.quiz_score === undefined || row.quiz_score === null
+              ? undefined
+              : row.quiz_score,
+          attendance: row.attendance || {},
+        };
+      });
+      setProgressByUser(map);
+
       const qc = {};
-      Object.keys(coursesProgress).forEach((cid) => {
-        const cp = coursesProgress[cid];
+      Object.keys(map).forEach((cid) => {
+        const cp = map[cid];
         if (cp && cp.quizScore !== undefined && cp.quizScore !== null) {
           qc[cid] = true;
         }
       });
       setQuizCompletion(qc);
-    } catch {
-      // 忽略 localStorage 解析錯誤
-    }
-  }, [user]);
+    })();
 
-  // 登入後載入進度與社群
-  useEffect(() => {
-    if (!user) return;
-    let mounted = true;
-    Promise.all([apiFetch("/api/progress/get"), apiFetch("/api/community/posts")])
-      .then(([p, c]) => {
-        if (!mounted) return;
-        const progress = p.progress || {};
-        setProgressByUser(progress);
-        const qc = {};
-        Object.keys(progress).forEach((cid) => {
-          const cp = progress[cid];
-          if (cp && cp.quizScore !== undefined && cp.quizScore !== null) {
-            qc[cid] = true;
-          }
-        });
-        setQuizCompletion(qc);
-
-        // 合併本地自訂貼文與後端貼文
-        let remote = normalizeCommunityPosts(c.posts || []);
-        try {
-          const rawLocal = window.localStorage.getItem(STORAGE.community);
-          if (rawLocal) {
-            const localAll = JSON.parse(rawLocal);
-            const localForUser = localAll?.[user.id] || [];
-            const byId = new Map(remote.map((p) => [p.id, p]));
-            for (const lp of localForUser) {
-              if (!byId.has(lp.id)) byId.set(lp.id, lp);
-            }
-            remote = Array.from(byId.values());
-          }
-        } catch {
-          // ignore
-        }
-        setPosts(remote);
-      })
-      .catch(() => {});
     return () => {
       mounted = false;
     };
   }, [user]);
 
-  // 將社群貼文寫入 localStorage（只存自己建立的）
+  // === 4. 讀取社群貼文 ===
   useEffect(() => {
     if (!user) return;
-    try {
-      const mine = (posts || []).filter((p) => (p.author || "") === (user.name || ""));
-      const raw = window.localStorage.getItem(STORAGE.community);
-      const all = raw ? JSON.parse(raw) : {};
-      all[user.id] = mine;
-      window.localStorage.setItem(STORAGE.community, JSON.stringify(all));
-    } catch {
-      // ignore
-    }
-  }, [user, posts]);
+    let mounted = true;
+
+    (async () => {
+      const { data, error } = await supabase
+        .from("community_posts")
+        .select(
+          `
+          id,
+          content,
+          created_at,
+          likes_count,
+          profiles (
+            id,
+            name,
+            note,
+            avatar_url,
+            avatar_color
+          )
+        `
+        )
+        .order("created_at", { ascending: false });
+
+      if (!mounted) return;
+      if (error) {
+        console.error("[community_posts/get] error:", error);
+        return;
+      }
+
+      setPosts(normalizeCommunityPosts(data || []));
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
+
+  // === 5. 便簽草稿同步 ===
+  useEffect(() => {
+    if (!user) return;
+    setNoteDraft(user.note || "");
+    setNoteSaved(false);
+  }, [user?.note]);
 
   const currentProgress = useMemo(() => {
     if (!user) return {};
@@ -1150,165 +1000,268 @@ export default function App() {
     return { completedCourses, badges };
   }, [currentProgress, quizCompletion, user]);
 
-  // 將進度與徽章寫入 localStorage
-  useEffect(() => {
+  // === 更新 Profile（Supabase）===
+  const updateProfile = async (patch) => {
     if (!user) return;
-    try {
-      const raw = window.localStorage.getItem(STORAGE.learning);
-      const all = raw ? JSON.parse(raw) : {};
-      const badges = computeEarnedBadgesFromProgress(progressByUser);
-      all[user.id] = {
-        ...(all?.[user.id] || {}),
-        courses: progressByUser,
-        badges,
-      };
-      window.localStorage.setItem(STORAGE.learning, JSON.stringify(all));
-    } catch {
-      // 忽略 localStorage 寫入錯誤
-    }
-  }, [user, progressByUser]);
 
-  // === Auth 處理（以姓名 + 密碼）===
-  const handleAuth = ({ mode, payload }) => {
-    setAuthError("");
-    const { name, password } = payload;
-
-    const endpoint = mode === "register" ? "/api/auth/register" : "/api/auth/login";
-    apiFetch(endpoint, {
-      method: "POST",
-      body: JSON.stringify({
-        name,
-        password,
-        note: "主恩滿溢",
-        avatarColor: randomAvatarColor(),
-        avatarUrl: null,
-      }),
-    })
-      .then((r) => {
-        setUser(r.user);
-        setActiveTab("courses");
-      })
-      .catch((e) => setAuthError(e.message || "登入/註冊失敗"));
-  };
-
-  const updateProfile = (patch) => {
-    if (!user) return;
     const optimistic = { ...user, ...patch };
     setUser(optimistic);
-    // 讓社群動態中的「自己的頭像氣泡」即時反映最新個人資料
-    setPosts((prev) =>
-      (prev || []).map((p) => {
-        if ((p.author || "") !== (user.name || "")) return p;
-        return {
-          ...p,
-          author: optimistic.name,
-          note: optimistic.note || "",
-          avatarColor: optimistic.avatarColor || p.avatarColor,
-          avatarUrl: optimistic.avatarUrl || p.avatarUrl,
-        };
-      })
-    );
-    apiFetch("/api/profile/update", {
-      method: "PATCH",
-      body: JSON.stringify(patch),
-    })
-      .then((r) => {
-        setUser(r.user);
-        // 寫入 localStorage：Profile
-        try {
-          const raw = window.localStorage.getItem(STORAGE.profile);
-          const all = raw ? JSON.parse(raw) : {};
-          all[r.user.id] = {
-            ...(all?.[r.user.id] || {}),
-            name: r.user.name,
-            note: r.user.note || "",
-            avatarColor: r.user.avatarColor || null,
-            avatarUrl: r.user.avatarUrl || null,
-          };
-          window.localStorage.setItem(STORAGE.profile, JSON.stringify(all));
-        } catch {
-          // ignore
-        }
-        setPosts((prev) =>
-          (prev || []).map((p) => {
-            if ((p.author || "") !== (user.name || "")) return p;
-            return {
-              ...p,
-              author: r.user?.name || p.author,
-              note: r.user?.note || "",
-              avatarColor: r.user?.avatarColor || p.avatarColor,
-              avatarUrl: r.user?.avatarUrl || p.avatarUrl,
-            };
-          })
-        );
-      })
-      .catch(() => setUser(optimistic));
+
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({
+          name: patch.name ?? user.name,
+          note: patch.note ?? user.note,
+          avatar_url: patch.avatarUrl ?? user.avatarUrl,
+        })
+        .eq("id", user.id)
+        .select("*")
+        .single();
+
+      if (error || !data) {
+        console.error("[profiles/update] error:", error);
+        setUser(user);
+        return;
+      }
+
+      const updated = {
+        id: data.id,
+        name: data.name,
+        note: data.note || "主恩滿溢",
+        avatarColor: data.avatar_color || user.avatarColor || randomAvatarColor(),
+        avatarUrl: data.avatar_url || null,
+      };
+      setUser(updated);
+
+      // 即時同步自己貼文的頭像與便簽
+      setPosts((prev) =>
+        (prev || []).map((p) =>
+          p.author === user.name
+            ? {
+                ...p,
+                author: updated.name,
+                note: updated.note,
+                avatarColor: updated.avatarColor,
+                avatarUrl: updated.avatarUrl,
+              }
+            : p
+        )
+      );
+    } catch (e) {
+      console.error(e);
+      setUser(user);
+    }
   };
 
-  const updateProgress = (courseId, courseProgress) => {
-    if (!user) return Promise.resolve();
+  // === 頭像上載 → 壓縮 → Supabase Storage → profiles ===
+  const handleAvatarUpload = async (file) => {
+    if (!user || !file) return;
+    try {
+      const blob = await compressImageToBlob(file);
+      const fileName = `${user.id}-${Date.now()}.jpg`;
+
+      const { data: uploadRes, error: uploadErr } = await supabase.storage
+        .from("avatars")
+        .upload(fileName, blob, { contentType: "image/jpeg", upsert: true });
+
+      if (uploadErr || !uploadRes) {
+        console.error("[storage/upload] error:", uploadErr);
+        alert("頭像上載失敗，請稍後再試。");
+        return;
+      }
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("avatars").getPublicUrl(uploadRes.path);
+
+      const { data: profile, error: profileErr } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", user.id)
+        .select("*")
+        .single();
+
+      if (profileErr || !profile) {
+        console.error("[profiles/update avatar] error:", profileErr);
+        alert("頭像儲存失敗，請稍後再試。");
+        return;
+      }
+
+      const updated = {
+        id: profile.id,
+        name: profile.name,
+        note: profile.note || "主恩滿溢",
+        avatarColor: profile.avatar_color || user.avatarColor || randomAvatarColor(),
+        avatarUrl: profile.avatar_url || null,
+      };
+      setUser(updated);
+
+      setPosts((prev) =>
+        (prev || []).map((p) =>
+          p.author === user.name
+            ? {
+                ...p,
+                avatarColor: updated.avatarColor,
+                avatarUrl: updated.avatarUrl,
+              }
+            : p
+        )
+      );
+    } catch (e) {
+      console.error("[handleAvatarUpload]", e);
+      alert("頭像上載失敗，請稍後再試。");
+    }
+  };
+
+  // === 課程進度更新（寫入 Supabase + 徽章彈窗）===
+  const updateProgress = async (courseId, courseProgress) => {
+    if (!user) return;
+
+    // 先更新前端狀態
     setProgressByUser((prev) => ({ ...prev, [courseId]: courseProgress }));
     if (courseProgress.quizScore !== undefined && courseProgress.quizScore !== null) {
       setQuizCompletion((prev) => ({ ...prev, [courseId]: true }));
     }
-    // 檢查是否首次完成整門書卷
+
+    // 徽章解鎖檢查
     const course = COURSES.find((c) => c.id === courseId);
     if (course) {
-      const readingDone =
-        (courseProgress.chapters?.length || 0) === course.chapters;
-      const quizDone =
-        courseProgress.quizScore !== undefined && courseProgress.quizScore !== null;
-      const attendDone =
-        courseProgress.attendance &&
-        (courseProgress.attendance.type === "live" ||
-          courseProgress.attendance.type === "replay");
-      const completedNow = readingDone && quizDone && attendDone;
+      const completedNow = isCompleteCourse(courseId, courseProgress);
       const prevProgress = progressByUser[courseId];
-      const prevReadingDone =
-        prevProgress && (prevProgress.chapters?.length || 0) === course.chapters;
-      const prevQuizDone =
-        prevProgress &&
-        prevProgress.quizScore !== undefined &&
-        prevProgress.quizScore !== null;
-      const prevAttendDone =
-        prevProgress &&
-        prevProgress.attendance &&
-        (prevProgress.attendance.type === "live" ||
-          prevProgress.attendance.type === "replay");
-      const wasCompleted = prevReadingDone && prevQuizDone && prevAttendDone;
+      const wasCompleted = prevProgress && isCompleteCourse(courseId, prevProgress);
       if (completedNow && !wasCompleted) {
         setShowBadgeAlert(course.title);
+        // 寫入 user_badges（若有此表）
+        try {
+          await supabase
+            .from("user_badges")
+            .upsert(
+              {
+                user_id: user.id,
+                badge_id: course.badgeKey,
+              },
+              { onConflict: "user_id,badge_id" }
+            );
+        } catch (e) {
+          console.error("[user_badges/upsert]", e);
+        }
       }
     }
-    return apiFetch("/api/progress/update", {
-      method: "PATCH",
-      body: JSON.stringify({
-        courseId,
-        chapters: courseProgress.chapters || [],
-        quizScore: courseProgress.quizScore,
-        attendance: courseProgress.attendance || {},
-      }),
-    })
-      .then(() => null)
-      .catch(() => {});
+
+    // 寫入 course_progress
+    try {
+      const { error } = await supabase.from("course_progress").upsert(
+        {
+          user_id: user.id,
+          course_id: String(courseId),
+          chapters: courseProgress.chapters || [],
+          quiz_score:
+            courseProgress.quizScore === undefined || courseProgress.quizScore === null
+              ? null
+              : courseProgress.quizScore,
+          attendance: courseProgress.attendance || {},
+          is_completed: isCompleteCourse(courseId, courseProgress),
+        },
+        { onConflict: "user_id,course_id" }
+      );
+      if (error) {
+        console.error("[course_progress/upsert] error:", error);
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  const logout = () => {
-    apiFetch("/api/auth/logout", { method: "POST" })
-      .catch(() => {})
-      .finally(() => {
-        setUser(null);
-        setProgressByUser({});
-        setPosts([]);
-        setActiveTab("courses");
-      });
+  // === 發佈社群貼文 ===
+  const handleCreatePost = async () => {
+    const content = composerText.trim();
+    if (!content) {
+      setComposerError("請輸入內容。");
+      return;
+    }
+    if (!user) return;
+
+    setComposerBusy(true);
+    setComposerError("");
+
+    // 修正：確保樂觀更新時使用當前 user 的最新頭像與顏色
+    const optimistic = {
+      id: `tmp-${Date.now()}`,
+      author: user.name,
+      content,
+      note: user.note || "",
+      likes: 0,
+      isLiked: false,
+      createdAt: new Date().toISOString(),
+      time: formatPostDate(new Date()),
+      avatarColor: user.avatarColor || "#F4C7A2",
+      avatarUrl: user.avatarUrl || null,
+      badge: null,
+    };
+    setPosts((prev) => [optimistic, ...prev]);
+    setComposerOpen(false);
+    setComposerText("");
+
+    try {
+      const { data, error } = await supabase
+        .from("community_posts")
+        .insert([{ user_id: user.id, content }])
+        .select(
+          `
+          id,
+          content,
+          created_at,
+          likes_count,
+          profiles (
+            id,
+            name,
+            note,
+            avatar_url,
+            avatar_color
+          )
+        `
+        )
+        .single();
+
+      if (error || !data) {
+        console.error("[community_posts/insert] error:", error);
+        alert("發佈失敗，請稍後再試。");
+        setComposerBusy(false);
+        // 失敗時移除 optimistic post
+        setPosts((prev) => prev.filter((p) => p.id !== optimistic.id));
+        return;
+      }
+
+      const normalized = normalizeCommunityPosts([data])[0];
+      setPosts((prev) => [normalized, ...prev.filter((p) => p.id !== optimistic.id)]);
+    } catch (e) {
+      console.error(e);
+      alert("發佈失敗，請稍後再試。");
+      setPosts((prev) => prev.filter((p) => p.id !== optimistic.id));
+    } finally {
+      setComposerBusy(false);
+    }
   };
 
-  // === 未登入：顯示 Auth 畫面 ===
+  // === 登出 ===
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setUser(null);
+      setProgressByUser({});
+      setPosts([]);
+      setActiveTab("courses");
+    }
+  };
+
+  // === 未登入：顯示 Auth ===
   if (!user) {
     return (
       <>
-        {/* 全域 CSS 鎖定：防止下拉刷新導致登出 */}
         <style>{`
           html, body {
             overscroll-behavior-y: none;
@@ -1321,7 +1274,7 @@ export default function App() {
     );
   }
 
-  // === 已登入：主介面 ===
+  // === 已登入：各頁 Tab ===
   const renderCoursesTab = () => (
     <div className="pb-24">
       {/* Dashboard Header */}
@@ -1425,7 +1378,6 @@ export default function App() {
         </button>
       </div>
 
-      {/* Threads 風格動態：卡片式排版 */}
       <div className="space-y-4">
         {posts.map((post) => {
           const isSelf = (post.author || "") === (user.name || "");
@@ -1434,6 +1386,7 @@ export default function App() {
           const effectiveAvatarColor = isSelf
             ? user.avatarColor || post.avatarColor || "#F4C7A2"
             : post.avatarColor || "#F4C7A2";
+          const effectiveAvatarUrl = isSelf ? user.avatarUrl || post.avatarUrl : post.avatarUrl;
 
           return (
             <div
@@ -1443,13 +1396,22 @@ export default function App() {
               <div className="flex gap-3">
                 <div className="relative flex-shrink-0">
                   <div
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-gray-700"
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-gray-700 overflow-hidden"
                     style={{ backgroundColor: effectiveAvatarColor }}
                   >
-                    {(effectiveAuthor || "友")?.[0] || "友"}
+                    {effectiveAvatarUrl ? (
+                      <img
+                        src={effectiveAvatarUrl}
+                        alt={effectiveAuthor}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      (effectiveAuthor || "友")?.[0] || "友"
+                    )}
                   </div>
+                  {/* 修正：氣泡縮小 (scale-75) 並上移 (-top-3) */}
                   {!!effectiveNote && (
-                    <div className="absolute -top-1 -right-1 z-10 bg-white border border-gray-200 text-[10px] px-1.5 py-0.5 rounded-full shadow-sm max-w-[90px] truncate">
+                    <div className="absolute -top-3 -right-2 z-10 bg-white border border-gray-200 text-[9px] px-1 py-0.5 rounded-full shadow-sm max-w-[80px] truncate scale-90 origin-bottom-left">
                       {effectiveNote}
                     </div>
                   )}
@@ -1484,12 +1446,11 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => {
-                        let didLike = false;
+                        // 前端本地 like toggle（不連動 DB）
                         setPosts((prev) =>
                           prev.map((p) => {
                             if (p.id !== post.id) return p;
                             const nextLiked = !p.isLiked;
-                            didLike = nextLiked;
                             return {
                               ...p,
                               isLiked: nextLiked,
@@ -1497,49 +1458,14 @@ export default function App() {
                             };
                           })
                         );
-                        if (didLike) {
-                          setLikeBursts((prev) => ({
-                            ...prev,
-                            [post.id]: (prev[post.id] || 0) + 1,
-                          }));
-                        }
-                        apiFetch("/api/community/like", {
-                          method: "POST",
-                          body: JSON.stringify({ postId: post.id }),
-                        })
-                          .then((r) => {
-                            setPosts((prev) =>
-                              prev.map((p) => {
-                                if (p.id !== post.id) return p;
-                                if (p.isLiked === !!r.liked) return p;
-                                return {
-                                  ...p,
-                                  isLiked: !!r.liked,
-                                  likes: Math.max(0, (p.likes || 0) + (r.liked ? 1 : -1)),
-                                };
-                              })
-                            );
-                          })
-                          .catch(() => {});
                       }}
-                      className="relative inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full hover:bg-gray-100 transition-colors"
                     >
                       <Heart
                         size={16}
                         className={post.isLiked ? "text-red-500 fill-red-500" : "text-gray-300"}
                       />
                       <span className="text-[11px] text-gray-500">{post.likes || 0}</span>
-                      {likeBursts[post.id] ? (
-                        <motion.span
-                          key={`${post.id}-${likeBursts[post.id]}`}
-                          initial={{ opacity: 0, y: 6 }}
-                          animate={{ opacity: [0, 1, 0], y: [6, -6, -14] }}
-                          transition={{ duration: 0.8 }}
-                          className="absolute -top-2 left-6 text-[10px] font-bold text-red-500 pointer-events-none"
-                        >
-                          +1
-                        </motion.span>
-                      ) : null}
                     </button>
                   </div>
                 </div>
@@ -1554,6 +1480,7 @@ export default function App() {
         )}
       </div>
 
+      {/* 發文 Modal */}
       <AnimatePresence>
         {composerOpen && (
           <motion.div
@@ -1618,43 +1545,7 @@ export default function App() {
                   disabled={composerBusy}
                   className="flex-1 h-10 rounded-full text-sm font-semibold text-white shadow-md active:scale-95 transition-all disabled:opacity-60"
                   style={{ backgroundColor: theme.accent }}
-                  onClick={() => {
-                    const content = composerText.trim();
-                    if (!content) {
-                      setComposerError("請輸入內容。");
-                      return;
-                    }
-                    setComposerBusy(true);
-                    setComposerError("");
-
-                    const optimistic = {
-                      id: `tmp-${Date.now()}`,
-                      author: user.name,
-                      content,
-                      note: user.note || "",
-                      likes: 0,
-                      isLiked: false,
-                      createdAt: new Date().toISOString(),
-                      time: formatPostDate(new Date()),
-                      avatarColor: user.avatarColor || "#F4C7A2",
-                      avatarUrl: user.avatarUrl || null,
-                      badge: null,
-                    };
-                    setPosts((prev) => [optimistic, ...prev]);
-                    setComposerOpen(false);
-                    setComposerText("");
-
-                    apiFetch("/api/community/post", {
-                      method: "POST",
-                      body: JSON.stringify({ content }),
-                    })
-                      .then(() => apiFetch("/api/community/posts"))
-                      .then((c) => setPosts(normalizeCommunityPosts(c.posts || [])))
-                      .catch(() => {
-                        alert("發佈失敗，請稍後再試。");
-                      })
-                      .finally(() => setComposerBusy(false));
-                  }}
+                  onClick={handleCreatePost}
                 >
                   發佈
                 </button>
@@ -1691,7 +1582,7 @@ export default function App() {
       </div>
 
       {/* 個人檔案卡片 */}
-      <div className="bg白 rounded-3xl shadow-md p-4 mb-6">
+      <div className="bg-white rounded-3xl shadow-md p-4 mb-6">
         <h3
           className="text-sm font-bold mb-3"
           style={{ color: theme.textMain }}
@@ -1755,13 +1646,7 @@ export default function App() {
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
-                compressImage(file)
-                  .then((dataUrl) => {
-                    updateProfile({ avatarUrl: dataUrl });
-                  })
-                  .catch((err) => {
-                    alert(err.message || "圖片壓縮失敗，請選擇較小的圖片重試。");
-                  });
+                handleAvatarUpload(file);
               }}
             />
           </div>
@@ -1769,7 +1654,7 @@ export default function App() {
       </div>
 
       {/* 徽章牆 */}
-      <div className="bg白 rounded-3xl shadow-md p-6 mb-6">
+      <div className="bg-white rounded-3xl shadow-md p-6 mb-6">
         <h3
           className="text-sm font-bold mb-4 flex items-center gap-2"
           style={{ color: theme.textMain }}
@@ -1779,12 +1664,7 @@ export default function App() {
         <div className="grid grid-cols-3 gap-y-6">
           {COURSES.map((c) => {
             const p = currentProgress[c.id];
-            const unlocked =
-              p &&
-              (p.chapters?.length || 0) === c.chapters &&
-              p.quizScore !== undefined &&
-              p.attendance &&
-              (p.attendance.type === "live" || p.attendance.type === "replay");
+            const unlocked = p && isCompleteCourse(c.id, p);
             return (
               <Badge
                 key={c.id}
@@ -1803,16 +1683,15 @@ export default function App() {
           學習獎勵
         </h3>
         <p className="text-xs text-orange-800 mb-4">
-          集齊 10 個徽章，可獲得神秘禮物一份！
-          （每月合堂，同工派發該月實體徽章）
+          集齊 10 個徽章，可獲得教會精美紀念品一份（請向牧者或同工查詢）。
         </p>
-        <div className="w-full h-2 bg白/60 rounded-full overflow-hidden mb-1.5">
+        <div className="w-full h-2 bg-white/60 rounded-full overflow-hidden mb-1.5">
           <div
-            className="h-full bg橙-500"
+            className="h-full bg-orange-500"
             style={{ width: `${Math.min((totalStats.badges / 10) * 100, 100)}%` }}
           />
         </div>
-        <div className="text-right text-[11px] text橙-700 font-bold">
+        <div className="text-right text-[11px] text-orange-700 font-bold">
           {totalStats.badges} / 10
         </div>
       </div>
@@ -1820,7 +1699,7 @@ export default function App() {
       <button
         type="button"
         onClick={logout}
-        className="w-full mt-8 py-3 text-sm font-medium text紅-400 flex items-center justify-center gap-2"
+        className="w-full mt-8 py-3 text-sm font-medium text-red-400 flex items-center justify-center gap-2"
       >
         <LogOut size={16} /> 登出帳戶
       </button>
@@ -1832,7 +1711,6 @@ export default function App() {
       className="min-h-screen font-sans"
       style={{ backgroundColor: theme.bg, color: theme.textMain }}
     >
-      {/* 全域 CSS 鎖定：防止下拉刷新導致登出 */}
       <style>{`
         html, body {
           overscroll-behavior-y: none;
@@ -1843,9 +1721,9 @@ export default function App() {
 
       <div className="max-w-md mx-auto min-h-screen bg-gray-50 relative">
         {/* 頂部教會資訊 */}
-        <header className="px-4 pt-6 pb-3 flex items-center justify-between bg白 sticky top-0 z-20 shadow-md">
+        <header className="px-4 pt-6 pb-3 flex items-center justify-between bg-white sticky top-0 z-20 shadow-md">
           <div>
-            <p className="text-[10px] font-semibold tracking-[0.16em] text橙-500">
+            <p className="text-[10px] font-semibold tracking-[0.16em] text-orange-500">
               金巴崙長老會沙田堂
             </p>
             <h1
@@ -1856,7 +1734,7 @@ export default function App() {
             </h1>
           </div>
           <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text橙-700 overflow-hidden"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-orange-700 overflow-hidden"
             style={{ backgroundColor: user.avatarColor || "#F4C7A2" }}
           >
             {user.avatarUrl ? (
@@ -1889,12 +1767,12 @@ export default function App() {
             >
               <div
                 className={`p-1.5 rounded-xl transition-all ${
-                  activeTab === "courses" ? "bg白/20" : ""
+                  activeTab === "courses" ? "bg-white/20" : ""
                 }`}
               >
                 <Home size={22} color="white" />
               </div>
-              <span className="text-[10px] text白 font-medium">課程</span>
+              <span className="text-[10px] text-white font-medium">課程</span>
             </button>
 
             <button
@@ -1906,12 +1784,12 @@ export default function App() {
             >
               <div
                 className={`p-1.5 rounded-xl transition-all ${
-                  activeTab === "community" ? "bg白/20" : ""
+                  activeTab === "community" ? "bg-white/20" : ""
                 }`}
               >
                 <MessageCircle size={22} color="white" />
               </div>
-              <span className="text-[10px] text白 font-medium">社群</span>
+              <span className="text-[10px] text-white font-medium">社群</span>
             </button>
 
             <button
@@ -1923,12 +1801,12 @@ export default function App() {
             >
               <div
                 className={`p-1.5 rounded-xl transition-all ${
-                  activeTab === "profile" ? "bg白/20" : ""
+                  activeTab === "profile" ? "bg-white/20" : ""
                 }`}
               >
                 <User size={22} color="white" />
               </div>
-              <span className="text-[10px] text白 font-medium">個人</span>
+              <span className="text-[10px] text-white font-medium">個人</span>
             </button>
           </div>
         </div>
@@ -1941,31 +1819,31 @@ export default function App() {
             initial={{ opacity: 0, scale: 0.6, y: 40 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.6, y: 40 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg黑/40 backdrop-blur-sm"
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
             onClick={() => setShowBadgeAlert(null)}
           >
             <div
-              className="bg白 rounded-3xl shadow-2xl p-8 max-w-xs w-full relative overflow-hidden"
+              className="bg-white rounded-3xl shadow-2xl p-8 max-w-xs w-full relative overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                className="absolute -top-12 -left-12 w-40 h-40 bg黃-100 rounded-full blur-3xl opacity-60"
+                className="absolute -top-12 -left-12 w-40 h-40 bg-yellow-100 rounded-full blur-3xl opacity-60"
               />
               <div className="relative mb-4">
-                <div className="w-24 h-24 mx-auto bg-gradient-to-br from黃-300 to橙-400 rounded-full flex items-center justify-center shadow-lg border-4 border黃-100">
-                  <Award size={60} className="text白" />
+                <div className="w-24 h-24 mx-auto bg-gradient-to-br from-yellow-300 to-orange-400 rounded-full flex items-center justify-center shadow-lg border-4 border-yellow-100">
+                  <Award size={60} className="text-white" />
                 </div>
               </div>
-              <h3 className="text-xl font-bold mb-2 text橙-900">完成解鎖！</h3>
-              <p className="text-sm text灰-600 mb-6">
+              <h3 className="text-xl font-bold mb-2 text-orange-900">完成解鎖！</h3>
+              <p className="text-sm text-gray-600 mb-6">
                 您已完成《{showBadgeAlert}》的所有學習內容。
               </p>
               <button
                 type="button"
                 onClick={() => setShowBadgeAlert(null)}
-                className="w-full py-3 rounded-xl font-semibold text-sm text白 shadow-md hover:shadow-lg transition-all"
+                className="w-full py-3 rounded-xl font-semibold text-sm text-white shadow-md hover:shadow-lg transition-all"
                 style={{ backgroundColor: theme.accent }}
               >
                 收下這枚徽章
