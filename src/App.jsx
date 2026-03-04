@@ -17,20 +17,18 @@ import {
   MessageCircle,
   Lock,
   Heart,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from '@supabase/supabase-js';
 
 // ------------------------------------------------------------------
-// ⚠️ 設定 Supabase 客戶端
-// 為了確保程式碼可以獨立運作，這裡直接初始化。
-// 請確保你的專案環境變數 (.env) 已設定，或在此處填入你的 URL 和 Key。
+// ⚠️ Supabase 設定
 // ------------------------------------------------------------------
 const supabaseUrl = "https://lscogljctrempxjwtwue.supabase.co"; 
-const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzY29nbGpjdHJlbXB4and0d3VlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0NzY1OTQsImV4cCI6MjA4ODA1MjU5NH0.zisZlYu6UmbpA6tUNP6wBzxcFoVzpGFYn9gmIoZxzz8"; // 那串很長的字
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzY29nbGpjdHJlbXB4and0d3VlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0NzY1OTQsImV4cCI6MjA4ODA1MjU5NH0.zisZlYu6UmbpA6tUNP6wBzxcFoVzpGFYn9gmIoZxzz8";
 
-// 建立客戶端 (如果沒有 key 則不建立，避免報錯)
 const supabase = (supabaseUrl && supabaseAnonKey) 
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
@@ -48,7 +46,7 @@ const theme = {
 
 const AVATAR_COLORS = ["#F4C7A2", "#F1B0AE", "#E8CE97", "#C9D8A7", "#B4C8E0"];
 
-// === 課程資料 (保持不變) ===
+// === 課程資料 ===
 const COURSES = [
   {
     id: 1,
@@ -192,7 +190,6 @@ function formatPostDate(input) {
   return `${dd}-${mm}-${yy}`;
 }
 
-// 整理貼文資料
 function normalizeCommunityPosts(rows) {
   const list = Array.isArray(rows) ? rows : [];
   return list.map((r) => {
@@ -225,7 +222,6 @@ function isCompleteCourse(courseId, progress) {
   return readingDone && quizDone && attendDone;
 }
 
-// 圖片壓縮
 function compressImageToBlob(file) {
   return new Promise((resolve, reject) => {
     if (!file || !file.type.startsWith("image/")) {
@@ -280,7 +276,7 @@ function compressImageToBlob(file) {
 // === Auth 畫面 ===
 function AuthScreen({ onAuth, error }) {
   const [isRegister, setIsRegister] = useState(false);
-  const [name, setName] = useState("");
+  const [name, setName] = useState("黃紫晴"); // 預設值，方便測試
   const [password, setPassword] = useState("");
   const [localError, setLocalError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -413,10 +409,10 @@ function AuthScreen({ onAuth, error }) {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full mt-2 py-3 rounded-xl font-semibold text-sm text-white shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full mt-2 py-3 rounded-xl font-semibold text-sm text-white shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center"
               style={{ backgroundColor: theme.accent }}
             >
-              {isLoading ? "處理中..." : (isRegister ? "建立帳戶並開始課程" : "登入課程")}
+              {isLoading ? <Loader2 className="animate-spin w-5 h-5" /> : (isRegister ? "建立帳戶並開始課程" : "登入課程")}
             </button>
           </form>
         </div>
@@ -789,7 +785,7 @@ export default function App() {
     };
   }, []);
 
-  // === 2. 修正後的 Auth 邏輯 ===
+  // === 2. 修正後的 Auth 邏輯 (關鍵修復) ===
   const handleAuth = async ({ mode, payload }) => {
     if (!supabase) {
       setAuthError("未設定 Supabase 連線，請檢查 .env");
@@ -800,9 +796,11 @@ export default function App() {
     const name = (payload.name || "").trim();
     const password = (payload.password || "").trim();
     
-    // 使用偽造 email 進行登入
-    // ⚠️ 確保 email 不包含空白
-    const email = `${name}@fake.local`;
+    // --------------------------------------------------------
+    // ⚠️ 關鍵修復：將名字轉換為 Email 格式
+    // 這樣 Supabase 才會接受，但使用者只看到名字
+    // --------------------------------------------------------
+    const email = `${name}@2026prophetic.com`;
 
     try {
       if (mode === "register") {
@@ -825,7 +823,6 @@ export default function App() {
         }
 
         if (!signUpData.user) {
-          // 如果開啟了 Confirm Email，這裡可能會沒有 Session
           throw new Error("註冊成功，但無法自動登入。請確認是否需要驗證信箱，或直接嘗試登入。");
         }
 
@@ -847,8 +844,6 @@ export default function App() {
 
         if (profileErr) {
           console.error("Profile creation failed:", profileErr);
-          // 雖然 Auth 成功但 Profile 失敗，這是一個邊緣情況
-          // 我們不拋出錯誤，讓 useEffect 的 Self-healing 機制去處理
         } else {
             setUser({
               id: profile.id,
