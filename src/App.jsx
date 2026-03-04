@@ -386,7 +386,7 @@ function AuthScreen({ onAuth, error }) {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 bg-white"
-                  placeholder=""
+                  placeholder="例如：陳大文"
                 />
               </div>
             )}
@@ -837,7 +837,7 @@ export default function App() {
 
         if (error) {
           if (error.message.includes("Database error")) {
-             throw new Error("系統繁忙或資料庫設定有誤 (Trigger Error)，請聯絡管理員。");
+             throw new Error("請聯絡管理員執行 SQL 修復腳本 (刪除 auth trigger)。");
           }
           if (error.message.includes("already registered")) {
             throw new Error("此電郵已被註冊，請直接登入。");
