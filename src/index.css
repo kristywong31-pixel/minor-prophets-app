@@ -1,7 +1,10 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
+html,
 body {
+  overscroll-behavior-y: none; /* 禁止瀏覽器預設的彈性滾動 */
+  overflow-x: hidden; /* 防止左右滑動 */
   @apply bg-cream text-coffee;
   margin: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
