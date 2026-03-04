@@ -19,7 +19,7 @@ import {
   Heart,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import supabase from "./supabaseClient";
+import { supabase } from "./supabaseClient";
 // 注意：這裡假設你有 bcryptjs，如果沒有，請在 package.json 安裝或移除相關加密邏輯
 // import bcrypt from "bcryptjs"; 
 // 為了讓這段程式碼能直接運行，我會暫時模擬 hash 功能，實際專案請用 bcryptjs
