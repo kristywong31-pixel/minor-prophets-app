@@ -386,7 +386,7 @@ function AuthScreen({ onAuth, error }) {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 bg-white"
-                  placeholder="例如：陳大文"
+                  placeholder=""
                 />
               </div>
             )}
@@ -809,7 +809,7 @@ export default function App() {
     };
   }, []);
 
-  // === 2. 修正後的 Auth 邏輯 (包含 Email) ===
+  // === 2. 修正後的 Auth 邏輯 (包含手動寫入 Profile) ===
   const handleAuth = async ({ mode, payload }) => {
     if (!supabase) {
       setAuthError("未設定 Supabase 連線，請檢查 .env");
@@ -824,7 +824,7 @@ export default function App() {
     try {
       if (mode === "register") {
         // 1. 註冊 Supabase Auth
-        // 這裡傳入 metadata: { name: ... } 讓 SQL Trigger 可以抓到
+        // 這裡我們仍然傳入 metadata，但如果後端 Trigger 壞了，這步可能會失敗
         const { data, error } = await supabase.auth.signUp({
           email: email,
           password: password,
@@ -836,6 +836,9 @@ export default function App() {
         });
 
         if (error) {
+          if (error.message.includes("Database error")) {
+             throw new Error("系統繁忙或資料庫設定有誤 (Trigger Error)，請聯絡管理員。");
+          }
           if (error.message.includes("already registered")) {
             throw new Error("此電郵已被註冊，請直接登入。");
           }
@@ -846,10 +849,23 @@ export default function App() {
           throw new Error("註冊成功，但無法自動登入。請確認是否需要驗證信箱，或直接嘗試登入。");
         }
 
-        // 2. 註冊成功後，通常會自動登入 (除非開啟了 Confirm Email)
-        // 因為有 SQL Trigger，我們不需要手動 insert app_users
-        // 但為了 UI 反應快，我們直接設定 user state
-        // (如果 Trigger 慢了，這裡只是暫時的 UI 狀態)
+        // 2. [關鍵修正] 手動寫入 app_users
+        // 這是為了防止後端 Trigger 失敗或不存在的情況
+        // 我們使用 upsert (insert or update)，確保不會因為重複而報錯
+        const { error: profileError } = await supabase
+            .from('app_users')
+            .upsert({
+                id: data.user.id,
+                name: name,
+                note: "主恩滿溢",
+                avatar_color: randomAvatarColor()
+            }, { onConflict: 'id' });
+
+        if (profileError) {
+             console.warn("Profile creation warning:", profileError);
+             // 這裡不 throw error，因為 Auth 已經成功了，我們讓它繼續登入
+        }
+
         setUser({
           id: data.user.id,
           name: name,
@@ -861,7 +877,6 @@ export default function App() {
 
       } else {
         // Login 模式
-        // 1. 直接嘗試登入
         const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -887,7 +902,7 @@ export default function App() {
           console.log("Profile missing on login, creating...");
           const { data: newProfile, error: createErr } = await supabase
             .from("app_users")
-            .insert({
+            .upsert({
                 id: signInData.user.id,
                 name: signInData.user.user_metadata?.name || "學員",
                 note: "主恩滿溢",
