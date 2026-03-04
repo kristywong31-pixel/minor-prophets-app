@@ -14,5 +14,9 @@
     "cookie": "^1.0.2",
     "framer-motion": "latest",
     "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react-swc": "^4.2.3",
+    "vite": "^7.3.1"
   }
 }
