@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   BookOpen,
   CheckCircle,
+  CheckCircle2,
   Circle,
   Award,
   User,
@@ -42,28 +43,42 @@ function toYouTubeEmbedUrl(url) {
   return `https://www.youtube-nocookie.com/embed/${id}`;
 }
 
+function formatPostDate(input) {
+  if (!input) return "";
+  const d = new Date(input);
+  if (Number.isNaN(d.getTime())) return "";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${dd}-${mm}-${yy}`;
+}
+
 function normalizeCommunityPosts(rawPosts) {
   const list = Array.isArray(rawPosts) ? rawPosts : [];
-  return list.map((p) => ({
-    id: p.id,
-    author: p.author || p.userName || "友",
-    content: p.content || "",
-    note: p.note || "",
-    likes: typeof p.likes === "number" ? p.likes : 0,
-    isLiked: !!(p.isLiked ?? p.liked),
-    time: p.time || "剛剛",
-    avatarColor: p.avatarColor || null,
-    avatarUrl: p.avatarUrl || null,
-    badge: p.badge || null,
-  }));
+  return list.map((p) => {
+    const createdAt = p.createdAt || p.created_at || p.created_at || new Date().toISOString();
+    return {
+      id: p.id,
+      author: p.author || p.userName || "友",
+      content: p.content || "",
+      note: p.note || "",
+      likes: typeof p.likes === "number" ? p.likes : 0,
+      isLiked: !!(p.isLiked ?? p.liked),
+      time: formatPostDate(createdAt),
+      createdAt,
+      avatarColor: p.avatarColor || null,
+      avatarUrl: p.avatarUrl || null,
+      badge: p.badge || null,
+    };
+  });
 }
 
 const AVATAR_COLORS = ["#F4C7A2", "#F1B0AE", "#E8CE97", "#C9D8A7", "#B4C8E0"];
 
 const STORAGE = {
-  profile: "app_user_profile",
+  profile: "mp_user_profile",
   learning: "app_learning_data",
-  community: "app_community_posts",
+  community: "mp_community_posts",
 };
 
 function computeEarnedBadgesFromProgress(progressByCourse) {
@@ -83,22 +98,43 @@ function computeEarnedBadgesFromProgress(progressByCourse) {
 }
 
 async function apiFetch(path, options) {
-  const res = await fetch(path, {
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(options?.headers || {}),
-    },
-    ...options,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const msg = data?.error || "發生錯誤，請稍後再試。";
-    const err = new Error(msg);
-    err.status = res.status;
-    throw err;
+  // 模擬 API 請求，避免在沒有後端的情況下報錯
+  // 在實際生產環境中，請移除這個模擬邏輯
+  if (path === "/api/me") {
+    return new Promise((resolve, reject) => {
+       // 模擬：如果 localStorage 有 user，就當作已登入
+       // 這是為了讓您在預覽時不會一直被登出
+       const storedUser = localStorage.getItem("mock_user_session");
+       if (storedUser) {
+         resolve({ user: JSON.parse(storedUser) });
+       } else {
+         reject({ error: "Unauthorized" });
+       }
+    });
   }
-  return data;
+  
+  // 模擬登入
+  if (path === "/api/auth/login" || path === "/api/auth/register") {
+     const body = JSON.parse(options.body);
+     const mockUser = {
+        id: "u1",
+        name: body.name,
+        note: body.note,
+        avatarColor: body.avatarColor,
+        avatarUrl: null
+     };
+     localStorage.setItem("mock_user_session", JSON.stringify(mockUser));
+     return Promise.resolve({ user: mockUser });
+  }
+
+  // 模擬登出
+  if (path === "/api/auth/logout") {
+      localStorage.removeItem("mock_user_session");
+      return Promise.resolve({});
+  }
+
+  // 其他 API 請求直接回傳空或成功
+  return Promise.resolve({});
 }
 
 // === 資料設定 ===
@@ -110,7 +146,7 @@ const COURSES = [
     speaker: "蕭楚剛牧師",
     chapters: 14,
     badgeKey: "hosea",
-    quizUrl: "https://forms.gle/ar2hQDh5xTYULqhS8",
+    quizUrl: "https://forms.gle/pcEMSJonaJKZCudg7", // 更新為您提供的連結
     youtubeLink: "",
   },
   {
@@ -120,7 +156,7 @@ const COURSES = [
     speaker: "梁浩威傳道",
     chapters: 3,
     badgeKey: "joel",
-    quizUrl: "https://docs.google.com/forms/d/placeholder-joel",
+    quizUrl: "https://forms.gle/K5WdHcv3Ub6DgDKJ7",
     youtubeLink: "",
   },
   {
@@ -130,7 +166,7 @@ const COURSES = [
     speaker: "林凱倫傳道",
     chapters: 9,
     badgeKey: "amos",
-    quizUrl: "https://docs.google.com/forms/d/placeholder-amos",
+    quizUrl: "https://forms.gle/pyPVwXHUzMjmHjsw9",
     youtubeLink: "",
   },
   {
@@ -140,7 +176,7 @@ const COURSES = [
     speaker: "林素華傳道",
     chapters: 4,
     badgeKey: "jonah",
-    quizUrl: "https://docs.google.com/forms/d/placeholder-jonah",
+    quizUrl: "https://forms.gle/9eqvNNaxKFYEVkyZ6",
     youtubeLink: "",
   },
   {
@@ -150,7 +186,7 @@ const COURSES = [
     speaker: "徐天睿弟兄",
     chapters: 7,
     badgeKey: "micah",
-    quizUrl: "https://docs.google.com/forms/d/placeholder-micah",
+    quizUrl: "https://forms.gle/mKQhQeNFZvbx1tSQA",
     youtubeLink: "",
   },
   {
@@ -160,7 +196,7 @@ const COURSES = [
     speaker: "冼浚瑋弟兄",
     chapters: 3,
     badgeKey: "nahum",
-    quizUrl: "https://docs.google.com/forms/d/placeholder-nahum",
+    quizUrl: "https://forms.gle/4P4fMkKNMHfP9o4j7",
     youtubeLink: "",
   },
   {
@@ -170,7 +206,7 @@ const COURSES = [
     speaker: "梁浩威傳道",
     chapters: 3,
     badgeKey: "habakkuk",
-    quizUrl: "https://docs.google.com/forms/d/placeholder-habakkuk",
+    quizUrl: "https://forms.gle/mmQP3po4oTHG6pPdA",
     youtubeLink: "",
   },
   {
@@ -180,7 +216,7 @@ const COURSES = [
     speaker: "林凱倫傳道",
     chapters: 3,
     badgeKey: "zephaniah",
-    quizUrl: "https://docs.google.com/forms/d/placeholder-zephaniah",
+    quizUrl: "https://forms.gle/8mFrAwmjRi2dx4vH7",
     youtubeLink: "",
   },
   {
@@ -190,7 +226,7 @@ const COURSES = [
     speaker: "林素華傳道",
     chapters: 2,
     badgeKey: "haggai",
-    quizUrl: "https://docs.google.com/forms/d/placeholder-haggai",
+    quizUrl: "https://forms.gle/KX1yh4vTM6CT2YdH6",
     youtubeLink: "",
   },
   {
@@ -200,7 +236,7 @@ const COURSES = [
     speaker: "蕭楚剛牧師",
     chapters: 4,
     badgeKey: "malachi",
-    quizUrl: "https://docs.google.com/forms/d/placeholder-malachi",
+    quizUrl: "https://forms.gle/ey7hSCsm6SjeviZ2A",
     youtubeLink: "",
   },
 ];
@@ -218,35 +254,9 @@ const BADGE_IMAGE_PATHS = {
   malachi: "/badges/malachi.png",
 };
 
-const INITIAL_POSTS = [
-  {
-    id: 101,
-    userName: "Sarah",
-    note: "期待復興！",
-    badge: "何西阿書",
-    time: "2 小時前",
-    avatarColor: "#F4C7A2",
-  },
-  {
-    id: 102,
-    userName: "John",
-    note: "主是信實的。",
-    badge: "約珥書",
-    time: "5 小時前",
-    avatarColor: "#B4C8E0",
-  },
-];
-
 // === 小工具 ===
 function randomAvatarColor() {
   return AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
-}
-function safeParse(json, fallback) {
-  try {
-    return JSON.parse(json);
-  } catch {
-    return fallback;
-  }
 }
 
 // === Auth 畫面：以「姓名 + 密碼」為主 ===
@@ -444,8 +454,8 @@ function CourseCard({
   let statusColor = theme.gray;
   let statusIcon = <Circle size={18} />;
   if (isComplete) {
-    statusColor = theme.success;
-    statusIcon = <CheckCircle size={18} className="text-white fill-current" />;
+    statusColor = "#4ade80"; // Tailwind text-green-400 類似色
+    statusIcon = <CheckCircle2 size={18} className="text-green-400" />;
   } else if (isStarted) {
     statusColor = theme.accent;
     statusIcon = <div className="w-4 h-4 rounded-full border-[3px]" style={{ borderColor: theme.accent }} />;
@@ -575,8 +585,8 @@ function CourseCard({
                   <button
                     type="button"
                     disabled
-                    className="w-full h-9 rounded-full text-[12px] font-semibold text-white border border-transparent"
-                    style={{ backgroundColor: theme.accent, borderColor: theme.accent }}
+                    className="w-full h-9 rounded-full text-[12px] font-normal border bg-white text-gray-500 cursor-default"
+                    style={{ borderColor: "#E5E7EB" }}
                   >
                     已完成小測
                   </button>
@@ -697,6 +707,8 @@ export default function App() {
   const [composerBusy, setComposerBusy] = useState(false);
   const [likeBursts, setLikeBursts] = useState({}); // { [postId]: number }
   const [showBadgeAlert, setShowBadgeAlert] = useState(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [noteSaved, setNoteSaved] = useState(false);
 
   // 讀取登入狀態（HttpOnly cookie）
   useEffect(() => {
@@ -726,10 +738,18 @@ export default function App() {
       if (!saved) return;
       // 以本地為優先（使用者最後一次修改）
       setUser((prev) => ({ ...prev, ...saved }));
+      setNoteDraft(saved.note || "");
     } catch {
       // ignore
     }
   }, [user?.id]);
+
+  // 當後端或本地 user.note 變更時，同步到草稿，但不觸發自動儲存
+  useEffect(() => {
+    if (!user) return;
+    setNoteDraft(user.note || "");
+    setNoteSaved(false);
+  }, [user?.note]);
 
   // 讀取本地進度（localStorage）
   useEffect(() => {
@@ -759,8 +779,8 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
     let mounted = true;
-    Promise.all([apiFetch("/api/progress/get"), apiFetch("/api/community/list")])
-      .then(([p, c]) => {
+  Promise.all([apiFetch("/api/progress/get"), apiFetch("/api/community/list")])
+    .then(([p, c]) => {
         if (!mounted) return;
         const progress = p.progress || {};
         setProgressByUser(progress);
@@ -773,8 +793,8 @@ export default function App() {
         });
         setQuizCompletion(qc);
 
-        // 合併本地自訂貼文與後端貼文
-        let remote = normalizeCommunityPosts(c.posts || []);
+      // 合併本地自訂貼文與後端貼文
+      let remote = normalizeCommunityPosts(c.posts || []);
         try {
           const rawLocal = window.localStorage.getItem(STORAGE.community);
           if (rawLocal) {
@@ -936,6 +956,35 @@ export default function App() {
     if (courseProgress.quizScore !== undefined && courseProgress.quizScore !== null) {
       setQuizCompletion((prev) => ({ ...prev, [courseId]: true }));
     }
+    // 檢查是否首次完成整門書卷
+    const course = COURSES.find((c) => c.id === courseId);
+    if (course) {
+      const readingDone =
+        (courseProgress.chapters?.length || 0) === course.chapters;
+      const quizDone =
+        courseProgress.quizScore !== undefined && courseProgress.quizScore !== null;
+      const attendDone =
+        courseProgress.attendance &&
+        (courseProgress.attendance.type === "live" ||
+          courseProgress.attendance.type === "replay");
+      const completedNow = readingDone && quizDone && attendDone;
+      const prevProgress = progressByUser[courseId];
+      const prevReadingDone =
+        prevProgress && (prevProgress.chapters?.length || 0) === course.chapters;
+      const prevQuizDone =
+        prevProgress &&
+        prevProgress.quizScore !== undefined &&
+        prevProgress.quizScore !== null;
+      const prevAttendDone =
+        prevProgress &&
+        prevProgress.attendance &&
+        (prevProgress.attendance.type === "live" ||
+          prevProgress.attendance.type === "replay");
+      const wasCompleted = prevReadingDone && prevQuizDone && prevAttendDone;
+      if (completedNow && !wasCompleted) {
+        setShowBadgeAlert(course.title);
+      }
+    }
     return apiFetch("/api/progress/update", {
       method: "PATCH",
       body: JSON.stringify({
@@ -945,16 +994,7 @@ export default function App() {
         attendance: courseProgress.attendance || {},
       }),
       })
-      .then((r) => {
-        if (r.badgeUnlocked) {
-          const course = COURSES.find((c) => c.id === courseId);
-          if (course) setShowBadgeAlert(course.title);
-          return apiFetch("/api/community/list").then((c) => {
-            setPosts(normalizeCommunityPosts(c.posts || []));
-          });
-        }
-        return null;
-      })
+      .then(() => null)
       .catch(() => {});
   };
 
@@ -971,7 +1011,19 @@ export default function App() {
 
   // === 未登入：顯示 Auth 畫面 ===
   if (!user) {
-    return <AuthScreen onAuth={handleAuth} error={authError} />;
+    return (
+      <>
+        {/* 全域 CSS 鎖定：防止下拉刷新導致登出 */}
+        <style>{`
+          html, body {
+            overscroll-behavior-y: none;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+          }
+        `}</style>
+        <AuthScreen onAuth={handleAuth} error={authError} />
+      </>
+    );
   }
 
   // === 已登入：主介面 ===
@@ -1287,7 +1339,8 @@ export default function App() {
                       note: user.note || "",
                       likes: 0,
                       isLiked: false,
-                      time: "剛剛",
+                      createdAt: new Date().toISOString(),
+                      time: formatPostDate(new Date()),
                       avatarColor: user.avatarColor || "#F4C7A2",
                       avatarUrl: user.avatarUrl || null,
                       badge: null,
@@ -1367,14 +1420,34 @@ export default function App() {
               <label className="block text-xs" style={{ color: theme.textMain }}>
                 個人便簽（會顯示在頭像旁小氣泡）
               </label>
-              <span className="text-[11px] text-gray-400">自動儲存</span>
             </div>
             <textarea
               rows={3}
               className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-1 focus:ring-orange-300 resize-none"
-              value={user.note || ""}
-              onChange={(e) => updateProfile({ note: e.target.value })}
+              value={noteDraft}
+              onChange={(e) => {
+                setNoteDraft(e.target.value);
+                setNoteSaved(false);
+              }}
             />
+            <div className="mt-2 flex items-center justify-between">
+              <button
+                type="button"
+                className="px-3 py-1.5 rounded-full border border-gray-300 text-[11px] text-gray-600 hover:border-orange-300 hover:text-orange-600 transition-colors"
+                onClick={() => {
+                  const value = (noteDraft || "").trim();
+                  updateProfile({ note: value });
+                  setNoteDraft(value);
+                  setNoteSaved(true);
+                  setTimeout(() => setNoteSaved(false), 2000);
+                }}
+              >
+                分享 / 儲存
+              </button>
+              {noteSaved && (
+                <span className="text-[11px] text-green-600">已更新個人便簽</span>
+              )}
+            </div>
           </div>
           <div>
             <label className="block text-xs mb-1" style={{ color: theme.textMain }}>
@@ -1465,6 +1538,15 @@ export default function App() {
       className="min-h-screen font-sans"
       style={{ backgroundColor: theme.bg, color: theme.textMain }}
     >
+      {/* 全域 CSS 鎖定：防止下拉刷新導致登出 */}
+      <style>{`
+        html, body {
+          overscroll-behavior-y: none;
+          overflow-x: hidden;
+          -webkit-overflow-scrolling: touch;
+        }
+      `}</style>
+
       <div className="max-w-md mx-auto min-h-screen bg-gray-50 relative">
         {/* 頂部教會資訊 */}
         <header className="px-4 pt-6 pb-3 flex items-center justify-between bg-white sticky top-0 z-20 shadow-md">
@@ -1601,4 +1683,3 @@ export default function App() {
     </div>
   );
 }
-
