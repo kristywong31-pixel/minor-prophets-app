@@ -276,6 +276,7 @@ function compressImageToBlob(file) {
 function AuthScreen({ onAuth, error }) {
   const [isRegister, setIsRegister] = useState(false);
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [localError, setLocalError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -285,8 +286,14 @@ function AuthScreen({ onAuth, error }) {
     setLocalError("");
     setIsLoading(true);
 
-    if (!name.trim()) {
+    if (isRegister && !name.trim()) {
       setLocalError("請輸入真實姓名。");
+      setIsLoading(false);
+      return;
+    }
+
+    if (!email.trim() || !email.includes("@")) {
+      setLocalError("請輸入有效的電郵地址。");
       setIsLoading(false);
       return;
     }
@@ -299,7 +306,7 @@ function AuthScreen({ onAuth, error }) {
 
     await onAuth({
       mode: isRegister ? "register" : "login",
-      payload: { name: name.trim(), password },
+      payload: { name: name.trim(), email: email.trim(), password },
     });
     
     setIsLoading(false);
@@ -366,19 +373,37 @@ function AuthScreen({ onAuth, error }) {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {isRegister && (
+              <div>
+                <label
+                  className="block text-xs font-semibold mb-1 ml-1"
+                  style={{ color: theme.textMain }}
+                >
+                  真實姓名 (將顯示於個人檔案)
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 bg-white"
+                  placeholder="例如：陳大文"
+                />
+              </div>
+            )}
+
             <div>
               <label
                 className="block text-xs font-semibold mb-1 ml-1"
                 style={{ color: theme.textMain }}
               >
-                真實姓名 (將作為登入帳號)
+                電郵地址
               </label>
               <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 bg-white"
-                placeholder="例如：陳大文"
+                placeholder="example@email.com"
               />
             </div>
 
@@ -784,7 +809,7 @@ export default function App() {
     };
   }, []);
 
-  // === 2. 修正後的 Auth 邏輯 (確保變數名稱正確) ===
+  // === 2. 修正後的 Auth 邏輯 (包含 Email) ===
   const handleAuth = async ({ mode, payload }) => {
     if (!supabase) {
       setAuthError("未設定 Supabase 連線，請檢查 .env");
@@ -793,10 +818,8 @@ export default function App() {
 
     setAuthError("");
     const name = (payload.name || "").trim();
+    const email = (payload.email || "").trim();
     const password = (payload.password || "").trim();
-    
-    // 使用偽造 email 進行登入
-    const email = `${name}@fake.local`;
 
     try {
       if (mode === "register") {
@@ -814,7 +837,7 @@ export default function App() {
 
         if (error) {
           if (error.message.includes("already registered")) {
-            throw new Error("此名字已被註冊，請直接登入。");
+            throw new Error("此電郵已被註冊，請直接登入。");
           }
           throw error;
         }
@@ -847,7 +870,7 @@ export default function App() {
         if (signInErr) {
           console.error("Login failed:", signInErr);
           if (signInErr.message.includes("Invalid login credentials")) {
-             throw new Error("名字或密碼錯誤。");
+             throw new Error("電郵或密碼錯誤。");
           }
           throw new Error("登入失敗，請稍後再試。");
         }
@@ -866,7 +889,7 @@ export default function App() {
             .from("app_users")
             .insert({
                 id: signInData.user.id,
-                name: name,
+                name: signInData.user.user_metadata?.name || "學員",
                 note: "主恩滿溢",
                 avatar_color: randomAvatarColor(),
             })
