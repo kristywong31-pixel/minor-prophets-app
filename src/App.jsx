@@ -17,19 +17,20 @@ import {
   MessageCircle,
   Lock,
   Heart,
-  AlertCircle,
-  Loader2,
-  Mail
+  AlertCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from '@supabase/supabase-js';
 
 // ------------------------------------------------------------------
-// ⚠️ Supabase 設定
+// ⚠️ 設定 Supabase 客戶端
+// 為了確保程式碼可以獨立運作，這裡直接初始化。
+// 請確保你的專案環境變數 (.env) 已設定，或在此處填入你的 URL 和 Key。
 // ------------------------------------------------------------------
 const supabaseUrl = "https://lscogljctrempxjwtwue.supabase.co"; 
-const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzY29nbGpjdHJlbXB4and0d3VlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0NzY1OTQsImV4cCI6MjA4ODA1MjU5NH0.zisZlYu6UmbpA6tUNP6wBzxcFoVzpGFYn9gmIoZxzz8";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzY29nbGpjdHJlbXB4and0d3VlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0NzY1OTQsImV4cCI6MjA4ODA1MjU5NH0.zisZlYu6UmbpA6tUNP6wBzxcFoVzpGFYn9gmIoZxzz8"; // 那串很長的字
 
+// 建立客戶端 (如果沒有 key 則不建立，避免報錯)
 const supabase = (supabaseUrl && supabaseAnonKey) 
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
@@ -47,7 +48,7 @@ const theme = {
 
 const AVATAR_COLORS = ["#F4C7A2", "#F1B0AE", "#E8CE97", "#C9D8A7", "#B4C8E0"];
 
-// === 課程資料 ===
+// === 課程資料 (保持不變) ===
 const COURSES = [
   {
     id: 1,
@@ -191,6 +192,7 @@ function formatPostDate(input) {
   return `${dd}-${mm}-${yy}`;
 }
 
+// 整理貼文資料
 function normalizeCommunityPosts(rows) {
   const list = Array.isArray(rows) ? rows : [];
   return list.map((r) => {
@@ -223,6 +225,7 @@ function isCompleteCourse(courseId, progress) {
   return readingDone && quizDone && attendDone;
 }
 
+// 圖片壓縮
 function compressImageToBlob(file) {
   return new Promise((resolve, reject) => {
     if (!file || !file.type.startsWith("image/")) {
@@ -274,10 +277,9 @@ function compressImageToBlob(file) {
   });
 }
 
-// === Auth 畫面 (已更新為 Email 登入) ===
+// === Auth 畫面 ===
 function AuthScreen({ onAuth, error }) {
   const [isRegister, setIsRegister] = useState(false);
-  const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [localError, setLocalError] = useState("");
@@ -288,14 +290,8 @@ function AuthScreen({ onAuth, error }) {
     setLocalError("");
     setIsLoading(true);
 
-    if (!email.includes("@")) {
-      setLocalError("請輸入有效的 Email 地址。");
-      setIsLoading(false);
-      return;
-    }
-
-    if (isRegister && !name.trim()) {
-      setLocalError("請輸入您的稱呼 (姓名)。");
+    if (!name.trim()) {
+      setLocalError("請輸入真實姓名。");
       setIsLoading(false);
       return;
     }
@@ -308,7 +304,7 @@ function AuthScreen({ onAuth, error }) {
 
     await onAuth({
       mode: isRegister ? "register" : "login",
-      payload: { email: email.trim(), name: name.trim(), password },
+      payload: { name: name.trim(), password },
     });
     
     setIsLoading(false);
@@ -357,7 +353,7 @@ function AuthScreen({ onAuth, error }) {
               }`}
               style={{ color: theme.textMain }}
             >
-              登入
+              已有帳號
             </button>
             <button
               type="button"
@@ -370,7 +366,7 @@ function AuthScreen({ onAuth, error }) {
               }`}
               style={{ color: theme.textMain }}
             >
-              註冊
+              建立新帳號
             </button>
           </div>
 
@@ -380,40 +376,16 @@ function AuthScreen({ onAuth, error }) {
                 className="block text-xs font-semibold mb-1 ml-1"
                 style={{ color: theme.textMain }}
               >
-                Email (電子郵件)
+                真實姓名 (將作為登入帳號)
               </label>
-              <div className="relative">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 bg-white"
-                  placeholder="example@email.com"
-                />
-                <Mail className="absolute left-3 top-3.5 text-gray-400" size={16} />
-              </div>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 bg-white"
+                placeholder="例如：陳大文"
+              />
             </div>
-
-            {isRegister && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-              >
-                <label
-                  className="block text-xs font-semibold mb-1 ml-1"
-                  style={{ color: theme.textMain }}
-                >
-                  您的稱呼 (姓名)
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 bg-white"
-                  placeholder="例如：陳大文"
-                />
-              </motion.div>
-            )}
 
             <div>
               <label
@@ -441,10 +413,10 @@ function AuthScreen({ onAuth, error }) {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full mt-2 py-3 rounded-xl font-semibold text-sm text-white shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center"
+              className="w-full mt-2 py-3 rounded-xl font-semibold text-sm text-white shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
               style={{ backgroundColor: theme.accent }}
             >
-              {isLoading ? <Loader2 className="animate-spin w-5 h-5" /> : (isRegister ? "建立帳戶" : "登入")}
+              {isLoading ? "處理中..." : (isRegister ? "建立帳戶並開始課程" : "登入課程")}
             </button>
           </form>
         </div>
@@ -817,7 +789,7 @@ export default function App() {
     };
   }, []);
 
-  // === 2. 修正後的 Auth 邏輯 (使用標準 Email) ===
+  // === 2. 修正後的 Auth 邏輯 ===
   const handleAuth = async ({ mode, payload }) => {
     if (!supabase) {
       setAuthError("未設定 Supabase 連線，請檢查 .env");
@@ -825,41 +797,46 @@ export default function App() {
     }
 
     setAuthError("");
-    const email = payload.email;
-    const password = payload.password;
-    const name = payload.name; // 只在註冊時有
+    const name = (payload.name || "").trim();
+    const password = (payload.password || "").trim();
+    
+    // 使用偽造 email 進行登入
+    // ⚠️ 確保 email 不包含空白
+    const email = `${name}@fake.local`;
 
     try {
       if (mode === "register") {
-        // 1. 註冊 Supabase Auth (標準流程)
-        const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
-          email,
-          password,
+        // 1. 註冊 Supabase Auth
+        const { data, error } = await supabase.auth.signUp({
+          email: email,
+          password: password,
           options: {
             data: {
-              full_name: name, // 將真實姓名存在 metadata
+              name: '陳大文', // <--- 重點：這裡要傳個名過去，Trigger 先至捉得到
             },
           },
-        });
+        })
 
         if (signUpErr) {
           if (signUpErr.message.includes("already registered")) {
-            throw new Error("此 Email 已被註冊，請直接登入。");
+            throw new Error("此名字已被註冊，請直接登入。");
           }
           throw signUpErr;
         }
 
         if (!signUpData.user) {
-          throw new Error("註冊異常，請稍後再試。");
+          // 如果開啟了 Confirm Email，這裡可能會沒有 Session
+          throw new Error("註冊成功，但無法自動登入。請確認是否需要驗證信箱，或直接嘗試登入。");
         }
 
         // 2. 寫入 app_users
+        // 使用 upsert 避免 race condition
         const { data: profile, error: profileErr } = await supabase
           .from("app_users")
           .upsert([
             {
               id: signUpData.user.id,
-              name: name,
+              name,
               note: "主恩滿溢",
               avatar_url: null,
               avatar_color: randomAvatarColor(),
@@ -870,6 +847,8 @@ export default function App() {
 
         if (profileErr) {
           console.error("Profile creation failed:", profileErr);
+          // 雖然 Auth 成功但 Profile 失敗，這是一個邊緣情況
+          // 我們不拋出錯誤，讓 useEffect 的 Self-healing 機制去處理
         } else {
             setUser({
               id: profile.id,
@@ -879,18 +858,11 @@ export default function App() {
               avatarUrl: profile.avatar_url,
             });
         }
-        
-        // 檢查是否需要驗證信箱 (Supabase 默認行為)
-        if (signUpData.session) {
-             setActiveTab("courses");
-        } else {
-            // 如果沒有 session，代表需要驗證信箱
-            alert("註冊成功！請檢查您的 Email 信箱並點擊驗證連結，然後重新登入。");
-            setIsRegister(false); // 切換回登入畫面
-        }
+        setActiveTab("courses");
 
       } else {
         // Login 模式
+        // 1. 直接嘗試登入
         const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -899,10 +871,7 @@ export default function App() {
         if (signInErr) {
           console.error("Login failed:", signInErr);
           if (signInErr.message.includes("Invalid login credentials")) {
-             throw new Error("Email 或密碼錯誤。");
-          }
-          if (signInErr.message.includes("Email not confirmed")) {
-             throw new Error("請先去信箱確認驗證信，才可登入。");
+             throw new Error("名字或密碼錯誤。");
           }
           throw new Error("登入失敗，請稍後再試。");
         }
@@ -917,12 +886,11 @@ export default function App() {
         if (profileErr || !profile) {
           // [Self-healing] 登入成功但沒資料，自動補建
           console.log("Profile missing on login, creating...");
-          const fullName = signInData.user.user_metadata?.full_name || "學員";
           const { data: newProfile, error: createErr } = await supabase
             .from("app_users")
             .insert({
                 id: signInData.user.id,
-                name: fullName,
+                name: name,
                 note: "主恩滿溢",
                 avatar_color: randomAvatarColor(),
             })
