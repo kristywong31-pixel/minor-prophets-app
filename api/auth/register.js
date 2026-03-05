@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
 
   try {
     const avatarColor = body?.avatarColor || null;
-    const note = body?.note || "主恩滿溢";
+    const note = body?.note || "主恩滿溢(可修改)";
     const avatarUrl = body?.avatarUrl || null;
 
     const { rows } = await pool.query(

@@ -507,7 +507,7 @@ export default function App() {
         .update({ name: opt.name, note: opt.note, avatar_url: opt.avatarUrl })
         .eq("id", user.id).select().single();
       if (error || !data) { console.error("Profile update:", error); setUser(prev); return; }
-      const updated = { id: data.id, name: data.name, note: data.note || "主恩滿溢", avatarColor: data.avatar_color || user.avatarColor, avatarUrl: data.avatar_url || null };
+      const updated = { id: data.id, name: data.name, note: data.note || "主恩滿溢(可修改)", avatarColor: data.avatar_color || user.avatarColor, avatarUrl: data.avatar_url || null };
       setUser(updated);
       setPosts((p) => p.map((po) => po.userId === user.id ? { ...po, author: updated.name, note: updated.note, avatarColor: updated.avatarColor, avatarUrl: updated.avatarUrl } : po));
     } catch (e) { console.error(e); setUser(prev); }
@@ -629,7 +629,7 @@ export default function App() {
           <div className="flex-1">
             <h2 className="text-lg font-bold" style={{ color: theme.textMain }}>平安，{user.name}</h2>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-[11px] bg-gray-100 px-2 py-0.5 rounded-full text-gray-600">{user.note || "主恩滿溢"}</span>
+              <span className="text-[11px] bg-gray-100 px-2 py-0.5 rounded-full text-gray-600">{user.note || "主恩滿溢(可修改)"}</span>
               <button type="button" onClick={() => setActiveTab("profile")} className="text-gray-400 hover:text-gray-600"><Edit3 size={12} /></button>
             </div>
           </div>
