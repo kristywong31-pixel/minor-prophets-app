@@ -205,7 +205,7 @@ function AuthScreen({ onAuth, error }) {
               <div>
                 <label className="block text-xs font-semibold mb-1 ml-1" style={{ color: theme.textMain }}>真實姓名 (將顯示於個人檔案)</label>
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 bg-white" placeholder="例如：陳大文" />
+                  className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 bg-white" />
               </div>
             )}
             <div>
