@@ -325,8 +325,10 @@ function CourseCard({ course, progress, isExpanded, onToggleExpand, onUpdateProg
               <div className="rounded-2xl p-4 shadow-sm" style={{ backgroundColor:"rgba(255,255,255,0.9)" }}>
                 <h4 className="text-xs font-semibold flex items-center gap-2 mb-2" style={{ color:theme.textMain }}><Edit3 size={14} /> 課前小測</h4>
                 {isQuizDone ? (
-                  <button type="button" disabled className="w-full h-9 rounded-full text-[12px] font-semibold border-none text-white cursor-default" style={{ backgroundColor:'#C4973B' }}>
-                ) : (
+    <button type="button" disabled className="w-full h-9 rounded-full text-[12px] font-semibold border-none text-white cursor-default" style={{ backgroundColor:'#C4973B' }}>
+      已完成小測
+    </button>
+) : (
                   <div className="space-y-3">
                     {course.quizUrl
                       ? <a href={course.quizUrl} target="_blank" rel="noopener noreferrer"
