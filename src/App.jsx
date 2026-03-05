@@ -325,7 +325,7 @@ function CourseCard({ course, progress, isExpanded, onToggleExpand, onUpdateProg
               <div className="rounded-2xl p-4 shadow-sm" style={{ backgroundColor:"rgba(255,255,255,0.9)" }}>
                 <h4 className="text-xs font-semibold flex items-center gap-2 mb-2" style={{ color:theme.textMain }}><Edit3 size={14} /> 課前小測</h4>
                 {isQuizDone ? (
-                  <button type="button" disabled className="w-full h-9 rounded-full text-[12px] font-normal border bg-white text-gray-500 cursor-default" style={{ borderColor:"#E5E7EB" }}>已完成小測</button>
+                  <button type="button" disabled className="w-full h-9 rounded-full text-[12px] font-semibold border-none text-white cursor-default" style={{ backgroundColor:'#C4973B' }}>
                 ) : (
                   <div className="space-y-3">
                     {course.quizUrl
@@ -699,7 +699,7 @@ export default function App() {
             </div>
           );
         })}
-        {posts.length === 0 && <p className="text-center text-xs text-gray-400 mt-6">還沒有動態~</p>}
+        {posts.length === 0 && <p className="text-center text-xs text-gray-400 mt-6">發佈一則貼文/取得徽章後，可看到社群內容~</p>}
       </div>
 
       <AnimatePresence>
@@ -760,7 +760,7 @@ export default function App() {
               value={noteDraft} onChange={(e) => { setNoteDraft(e.target.value); setNoteSaved(false); }} />
             <button type="button" className="mt-2 px-3 py-1.5 rounded-full border border-gray-300 text-[11px] text-gray-600 hover:border-orange-300 hover:text-orange-600 transition-colors"
               onClick={() => { updateProfile({ note: noteDraft.trim() }); setNoteSaved(true); setTimeout(() => setNoteSaved(false), 2000); }}>
-              分享 / 儲存
+              分享
             </button>
           </div>
           <div>
@@ -783,7 +783,7 @@ export default function App() {
 
       <div className="bg-gradient-to-r from-orange-50 to-orange-100 rounded-3xl shadow-md p-6 border border-orange-200">
         <h3 className="text-sm font-bold mb-2 text-orange-900">學習獎勵</h3>
-        <p className="text-xs text-orange-800 mb-4">集齊 10 個徽章，可獲得教會精美紀念品一份。</p>
+        <p className="text-xs text-orange-800 mb-4">集齊 10 個徽章，可獲神秘禮物一份（每月合堂將結算派發該月實體徽章）。</p>
         <div className="w-full h-2 bg-white/60 rounded-full overflow-hidden mb-1.5">
           <div className="h-full bg-orange-500" style={{ width: `${Math.min((totalStats.badges / 10) * 100, 100)}%` }} />
         </div>
