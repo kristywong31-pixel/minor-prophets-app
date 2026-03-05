@@ -23,7 +23,7 @@ const AVATAR_COLORS = ["#F4C7A2","#F1B0AE","#E8CE97","#C9D8A7","#B4C8E0"];
 // ── Course catalogue (static) ─────────────────────────────
 const COURSES = [
   { id:1,  date:"2026.03.05", title:"何西阿書", speaker:"蕭楚剛牧師", chapters:14, badgeKey:"hosea",
-    quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSdjaoKXvSscCkUv8yQ-b4XsEAzyuQqtp3qoANB1TP4V9DKf3w/viewform?usp=send_form", youtubeLink:"" },
+    quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSdjaoKXvSscCkUv8yQ-b4XsEAzyuQqtp3qoANB1TP4V9DKf3w/viewform?usp=send_form", youtubeLink:"https://youtu.be/UUorD_-WSBM" },
   { id:2,  date:"2026.04.02", title:"約珥書",   speaker:"梁浩威傳道", chapters:3,  badgeKey:"joel",
     quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSeBMksdl9SIpXxFxHYiyD3Rsg9q_my42S9AeWzCSw1oS3F91Q/closedform", youtubeLink:"" },
   { id:3,  date:"2026.05.07", title:"阿摩斯書", speaker:"林凱倫傳道", chapters:9,  badgeKey:"amos",
@@ -139,7 +139,7 @@ async function fetchOrCreateProfile(authUser) {
     return {
       id: profile.id,
       name: profile.name || "學員",
-      note: profile.note || "主恩滿溢",
+      note: profile.note || "主恩滿溢(可修改)",
       avatarColor: profile.avatar_color || randomAvatarColor(),
       avatarUrl: profile.avatar_url || null,
     };
@@ -148,7 +148,7 @@ async function fetchOrCreateProfile(authUser) {
   const { data: np, error: ce } = await supabase
     .from("app_users")
     .upsert(
-      { id: authUser.id, name: authUser.user_metadata?.name || "學員", note: "主恩滿溢", avatar_color: randomAvatarColor() },
+      { id: authUser.id, name: authUser.user_metadata?.name || "學員", note: "主恩滿溢(可修改)", avatar_color: randomAvatarColor() },
       { onConflict: "id" }
     )
     .select()
@@ -156,7 +156,7 @@ async function fetchOrCreateProfile(authUser) {
 
   if (ce || !np) { console.error("Profile self-heal failed:", ce); return null; }
   return {
-    id: np.id, name: np.name || "學員", note: np.note || "主恩滿溢",
+    id: np.id, name: np.name || "學員", note: np.note || "主恩滿溢(可修改)",
     avatarColor: np.avatar_color || randomAvatarColor(), avatarUrl: np.avatar_url || null,
   };
 }
@@ -172,7 +172,7 @@ function AuthScreen({ onAuth, error }) {
 
   const submit = async (e) => {
     e.preventDefault(); setLocalErr(""); setBusy(true);
-    if (isRegister && !name.trim()) { setLocalErr("請輸入真實姓名。"); setBusy(false); return; }
+    if (isRegister && !name.trim()) { setLocalErr("請輸入姓名。"); setBusy(false); return; }
     if (!email.trim() || !email.includes("@")) { setLocalErr("請輸入有效的電郵地址。"); setBusy(false); return; }
     if (!password || password.length < 6) { setLocalErr("密碼需至少 6 個字元。"); setBusy(false); return; }
     await onAuth({ mode: isRegister ? "register" : "login", payload: { name: name.trim(), email: email.trim(), password } });
@@ -846,10 +846,16 @@ export default function App() {
               <motion.div animate={{ rotate:360 }} transition={{ duration:20,repeat:Infinity,ease:"linear" }}
                 className="absolute -top-12 -left-12 w-40 h-40 bg-yellow-100 rounded-full blur-3xl opacity-60" />
               <div className="relative mb-4">
-                <div className="w-24 h-24 mx-auto bg-gradient-to-br from-yellow-300 to-orange-400 rounded-full flex items-center justify-center shadow-lg border-4 border-yellow-100">
-                  <Award size={60} className="text-white" />
-                </div>
-              </div>
+  <div className="w-24 h-24 mx-auto bg-gradient-to-br from-yellow-50 to-orange-100 rounded-full flex items-center justify-center shadow-lg border-4 border-yellow-200 overflow-hidden">
+    {(() => {
+      const course = COURSES.find((c) => c.title === showBadgeAlert);
+      const src = course ? BADGE_IMAGE_PATHS[course.badgeKey] : null;
+      return src
+        ? <img src={src} alt={showBadgeAlert} className="w-20 h-20 object-contain" />
+        : <Award size={60} className="text-white" />;
+    })()}
+  </div>
+</div>
               <h3 className="text-xl font-bold mb-2 text-orange-900">完成解鎖！</h3>
               <p className="text-sm text-gray-600 mb-6">您已完成《{showBadgeAlert}》的所有學習內容。</p>
               <button type="button" onClick={() => setShowBadgeAlert(null)}
