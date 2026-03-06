@@ -72,7 +72,7 @@ create table if not exists post_likes (
 insert into courses (id, title, badge_key, speaker, chapters_count, event_date) values
   (1, '何西阿書', 'hosea', '蕭楚剛牧師', 14, '2026-03-05'),
   (2, '約珥書', 'joel', '梁浩威傳道', 3, '2026-04-02'),
-  (3, '阿摩斯書', 'amos', '林凱倫傳道', 9, '2026-05-07'),
+  (3, '阿摩司書', 'amos', '林凱倫傳道', 9, '2026-05-07'),
   (4, '約拿書', 'jonah', '林素華傳道', 4, '2026-06-04'),
   (5, '彌迦書', 'micah', '徐天睿弟兄', 7, '2026-07-02'),
   (6, '那鴻書', 'nahum', '冼浚瑋弟兄', 3, '2026-08-06'),

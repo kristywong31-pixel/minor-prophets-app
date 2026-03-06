@@ -26,7 +26,7 @@ const COURSES = [
     quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSdjaoKXvSscCkUv8yQ-b4XsEAzyuQqtp3qoANB1TP4V9DKf3w/viewform?usp=send_form", youtubeLink:"https://youtu.be/UUorD_-WSBM" },
   { id:2,  date:"2026.04.02", title:"約珥書",   speaker:"梁浩威傳道", chapters:3,  badgeKey:"joel",
     quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSeBMksdl9SIpXxFxHYiyD3Rsg9q_my42S9AeWzCSw1oS3F91Q/closedform", youtubeLink:"" },
-  { id:3,  date:"2026.05.07", title:"阿摩斯書", speaker:"林凱倫傳道", chapters:9,  badgeKey:"amos",
+  { id:3,  date:"2026.05.07", title:"阿摩司書", speaker:"林凱倫傳道", chapters:9,  badgeKey:"amos",
     quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSdwGSlCBhG1wzj7sMhfVz_NjXC5157bd7f3MTMVI_OnnVu-1g/closedform", youtubeLink:"" },
   { id:4,  date:"2026.06.04", title:"約拿書",   speaker:"林素華傳道", chapters:4,  badgeKey:"jonah",
     quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSfmJ2HxVbtyG1C8gzKiNHx_sHuHPlH3xNHMI0DpDAd3R8oitw/closedform", youtubeLink:"" },

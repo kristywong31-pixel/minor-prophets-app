@@ -11,7 +11,7 @@ module.exports = async (req, res) => {
   const name = (body?.name || "").trim();
   const password = body?.password || "";
 
-  if (!name) return json(res, 400, { error: "請輸入真實姓名。" });
+  if (!name) return json(res, 400, { error: "請輸入姓名。" });
   if (!password || password.length < 6) return json(res, 400, { error: "姓名或密碼不正確。" });
 
   const pool = getPool();

@@ -90,7 +90,7 @@ npm run dev
 
 - 何西阿書：`public/badges/hosea.png`
 - 約珥書：`public/badges/joel.png`
-- 阿摩斯書：`public/badges/amos.png`
+- 阿摩司書：`public/badges/amos.png`
 - 約拿書：`public/badges/jonah.png`
 - 彌迦書：`public/badges/micah.png`
 - 那鴻書：`public/badges/nahum.png`

@@ -22,7 +22,7 @@ function makePlaceholderQuiz(bookTitle) {
 export const QUIZ_BANK = {
   1: makePlaceholderQuiz("何西阿書"),
   2: makePlaceholderQuiz("約珥書"),
-  3: makePlaceholderQuiz("阿摩斯書"),
+  3: makePlaceholderQuiz("阿摩司書"),
   4: makePlaceholderQuiz("約拿書"),
   5: makePlaceholderQuiz("彌迦書"),
   6: makePlaceholderQuiz("那鴻書"),
