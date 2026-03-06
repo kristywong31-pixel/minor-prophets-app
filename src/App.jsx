@@ -79,6 +79,25 @@ function isCompleteCourse(courseId, progress) {
   const attendDone   = progress.attendance?.type === "live" || progress.attendance?.type === "replay";
   return readingDone && quizDone && attendDone;
 }
+// ── Quiz deadline logic ──────────────────────────────────
+function getQuizStatus(courseDate) {
+  const parts = courseDate.split(".");
+  const lessonDate = new Date(`${parts[0]}-${parts[1]}-${parts[2]}T00:00:00+08:00`);
+  const deadline = new Date(lessonDate);
+  deadline.setDate(deadline.getDate() + 7);
+  deadline.setHours(23, 59, 59, 999);
+
+  const now = new Date();
+
+  if (now < lessonDate) {
+    return { status: "not-started", deadline, lessonDate };
+  }
+  if (now <= deadline) {
+    const daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+    return { status: "open", daysLeft, deadline, lessonDate };
+  }
+  return { status: "closed", deadline, lessonDate };
+}
 
 function normalizePosts(rows, likedIds = new Set()) {
   return (rows || []).map((r) => {
@@ -322,25 +341,60 @@ function CourseCard({ course, progress, isExpanded, onToggleExpand, onUpdateProg
               </div>
 
               {/* 課前小測 */}
-              <div className="rounded-2xl p-4 shadow-sm" style={{ backgroundColor:"rgba(255,255,255,0.9)" }}>
-                <h4 className="text-xs font-semibold flex items-center gap-2 mb-2" style={{ color:theme.textMain }}><Edit3 size={14} /> 課前小測</h4>
-                {isQuizDone ? (
-    <button type="button" disabled className="w-full h-9 rounded-full text-[12px] font-semibold border-none text-white cursor-default" style={{ backgroundColor:'#C4973B' }}>
-      已完成小測
-    </button>
-) : (
-                  <div className="space-y-3">
-                    {course.quizUrl
-                      ? <a href={course.quizUrl} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center justify-center w-full h-9 rounded-full text-[12px] border bg-white transition-all"
-                          style={{ borderColor:"#E5E7EB", color:theme.textMain }}>開始測驗</a>
-                      : <p className="text-[11px] text-gray-400">小測連結尚未設定</p>}
-                    <button type="button" onClick={handleFinishQuiz}
-                      className="w-full h-9 rounded-full text-[12px] font-semibold border shadow-sm active:scale-95 transition-all"
-                      style={{ backgroundColor:"white", borderColor:"#E5E7EB", color:theme.textMain }}>已完成小測</button>
-                  </div>
-                )}
-              </div>
+<div className="rounded-2xl p-4 shadow-sm" style={{ backgroundColor:"rgba(255,255,255,0.9)" }}>
+  <h4 className="text-xs font-semibold flex items-center gap-2 mb-2" style={{ color:theme.textMain }}>
+    <Edit3 size={14} /> 課前小測
+  </h4>
+
+  {(() => {
+    const qs = getQuizStatus(course.date);
+
+    // ✅ 已完成
+    if (isQuizDone) {
+      return (
+        <button type="button" disabled
+          className="w-full h-9 rounded-full text-[12px] font-semibold border-none text-white cursor-default"
+          style={{ backgroundColor: "#C4973B" }}>
+          已完成小測
+        </button>
+      );
+    }
+
+
+    // 🔒 已過 7 天截止
+    if (qs.status === "closed") {
+      return (
+        <div className="flex items-center gap-2 text-red-400 bg-red-50 rounded-xl px-4 py-3">
+          <Lock size={14} />
+          <span className="text-[12px]">小測已截止（{course.date} 後 7 天）</span>
+        </div>
+      );
+    }
+
+    // 📝 開放中（課堂日起計 7 天內）
+    return (
+      <div className="space-y-3">
+        {course.quizUrl ? (
+          <a href={course.quizUrl} target="_blank" rel="noopener noreferrer"
+            className="flex items-center justify-center w-full h-9 rounded-full text-[12px] border bg-white transition-all hover:bg-gray-50"
+            style={{ borderColor: "#E5E7EB", color: theme.textMain }}>
+            開始測驗
+          </a>
+        ) : (
+          <p className="text-[11px] text-gray-400">小測連結尚未設定</p>
+        )}
+        <button type="button" onClick={handleFinishQuiz}
+          className="w-full h-9 rounded-full text-[12px] font-semibold border shadow-sm active:scale-95 transition-all"
+          style={{ backgroundColor: "white", borderColor: "#E5E7EB", color: theme.textMain }}>
+          已完成小測
+        </button>
+        <p className="text-[10px] text-orange-500 text-center">
+          ⏰ 剩餘 {qs.daysLeft} 天（截止：{qs.deadline.toLocaleDateString("zh-HK")}）
+        </p>
+      </div>
+    );
+  })()}
+</div>
 
               {/* 出席紀錄 */}
               <div className="rounded-2xl p-4 shadow-sm" style={{ backgroundColor:"rgba(255,255,255,0.9)" }}>
