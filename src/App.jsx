@@ -79,21 +79,39 @@ function isCompleteCourse(courseId, progress) {
   const attendDone   = progress.attendance?.type === "live" || progress.attendance?.type === "replay";
   return readingDone && quizDone && attendDone;
 }
-// ── Quiz deadline logic ──────────────────────────────────
+// ── Quiz deadline logic (課堂日起計 14 日) ─────────────────
+function parseLessonDate(input) {
+  const raw = String(input || "").trim();
+  if (!raw) return null;
+
+  // 支援 courses.date 常見格式：YYYY.MM.DD / YYYY-MM-DD / ISO string
+  const dotted = raw.match(/^(\d{4})\.(\d{2})\.(\d{2})$/);
+  if (dotted) return new Date(`${dotted[1]}-${dotted[2]}-${dotted[3]}T00:00:00+08:00`);
+
+  const dashed = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dashed) return new Date(`${dashed[1]}-${dashed[2]}-${dashed[3]}T00:00:00+08:00`);
+
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return null;
+  // 只取日期（避免時區造成日期偏移）
+  return new Date(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T00:00:00+08:00`);
+}
+
 function getQuizStatus(courseDate) {
-  const parts = courseDate.split(".");
-  const lessonDate = new Date(`${parts[0]}-${parts[1]}-${parts[2]}T00:00:00+08:00`);
+  const lessonDate = parseLessonDate(courseDate);
+  if (!lessonDate) return { status: "unknown", lessonDate: null, deadline: null };
+
+  // 「起計 14 日內」：包含課堂日共 14 個日曆日 → 最後一天為 lessonDate + 13
   const deadline = new Date(lessonDate);
-  deadline.setDate(deadline.getDate() + 7);
+  deadline.setDate(deadline.getDate() + 13);
   deadline.setHours(23, 59, 59, 999);
 
   const now = new Date();
 
-  if (now < lessonDate) {
-    return { status: "not-started", deadline, lessonDate };
-  }
+  if (now < lessonDate) return { status: "not-started", deadline, lessonDate };
   if (now <= deadline) {
-    const daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+    const msLeft = deadline.getTime() - now.getTime();
+    const daysLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
     return { status: "open", daysLeft, deadline, lessonDate };
   }
   return { status: "closed", deadline, lessonDate };
@@ -360,18 +378,48 @@ function CourseCard({ course, progress, isExpanded, onToggleExpand, onUpdateProg
       );
     }
 
+    // ❓ 日期未能解析（保守處理：仍可顯示連結，但不顯示剩餘日數）
+    if (qs.status === "unknown") {
+      return course.quizUrl ? (
+        <a href={course.quizUrl} target="_blank" rel="noopener noreferrer"
+          className="flex items-center justify-center w-full h-9 rounded-full text-[12px] border bg-white transition-all hover:bg-gray-50"
+          style={{ borderColor: "#E5E7EB", color: theme.textMain }}>
+          開始測驗
+        </a>
+      ) : (
+        <p className="text-[11px] text-gray-400">小測連結尚未設定</p>
+      );
+    }
 
-    // 🔒 已過 7 天截止
-    if (qs.status === "closed") {
+    // 🕒 未到課堂日（按規則：課堂日起計 14 日內才可完成）
+    if (qs.status === "not-started") {
       return (
-        <div className="flex items-center gap-2 text-red-400 bg-red-50 rounded-xl px-4 py-3">
-          <Lock size={14} />
-          <span className="text-[12px]">小測已截止（{course.date} 後 7 天）</span>
+        <div className="space-y-2">
+          <button type="button" disabled
+            className="w-full h-9 rounded-full text-[12px] font-semibold border shadow-sm cursor-not-allowed"
+            style={{ backgroundColor: "#F3F4F6", borderColor: "#E5E7EB", color: "#9CA3AF" }}>
+            開始測驗
+          </button>
+          <p className="text-[11px] text-gray-400 text-center">小測未開始</p>
         </div>
       );
     }
 
-    // 📝 開放中（課堂日起計 7 天內）
+    // 🔒 已過 14 日截止
+    if (qs.status === "closed") {
+      return (
+        <div className="space-y-2">
+          <button type="button" disabled
+            className="w-full h-9 rounded-full text-[12px] font-semibold border shadow-sm cursor-not-allowed"
+            style={{ backgroundColor: "#F3F4F6", borderColor: "#E5E7EB", color: "#9CA3AF" }}>
+            開始測驗
+          </button>
+          <p className="text-[11px] text-gray-400 text-center">小測已截止</p>
+        </div>
+      );
+    }
+
+    // 📝 開放中（課堂日起計 14 日內）
     return (
       <div className="space-y-3">
         {course.quizUrl ? (
@@ -388,8 +436,8 @@ function CourseCard({ course, progress, isExpanded, onToggleExpand, onUpdateProg
           style={{ backgroundColor: "white", borderColor: "#E5E7EB", color: theme.textMain }}>
           已完成小測
         </button>
-        <p className="text-[10px] text-orange-500 text-center">
-          ⏰ 剩餘 {qs.daysLeft} 天（截止：{qs.deadline.toLocaleDateString("zh-HK")}）
+        <p className="text-[11px] text-orange-600 text-center">
+          剩餘 {qs.daysLeft} 日
         </p>
       </div>
     );
