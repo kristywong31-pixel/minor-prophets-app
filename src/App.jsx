@@ -101,14 +101,15 @@ function getQuizStatus(courseDate) {
   const lessonDate = parseLessonDate(courseDate);
   if (!lessonDate) return { status: "unknown", lessonDate: null, deadline: null };
 
-  // 規則：開課日前 14 天起開放，至開課日（含）截止
+  // 規則：開課前 14 天起開放，開課後 14 天關閉
   // windowStart = lessonDate - 14 days (00:00)
   const windowStart = new Date(lessonDate);
   windowStart.setDate(windowStart.getDate() - 14);
   windowStart.setHours(0, 0, 0, 0);
 
-  // windowEnd = lessonDate (23:59:59.999)
+  // windowEnd = lessonDate + 14 days (23:59:59.999)
   const windowEnd = new Date(lessonDate);
+  windowEnd.setDate(windowEnd.getDate() + 14);
   windowEnd.setHours(23, 59, 59, 999);
 
   const now = new Date();
