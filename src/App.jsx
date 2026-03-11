@@ -79,7 +79,7 @@ function isCompleteCourse(courseId, progress) {
   const attendDone   = progress.attendance?.type === "live" || progress.attendance?.type === "replay";
   return readingDone && quizDone && attendDone;
 }
-// ── Quiz deadline logic (課堂日起計 14 日) ─────────────────
+// ── Quiz open window (開課前 14 天) ────────────────────────
 function parseLessonDate(input) {
   const raw = String(input || "").trim();
   if (!raw) return null;
@@ -101,20 +101,25 @@ function getQuizStatus(courseDate) {
   const lessonDate = parseLessonDate(courseDate);
   if (!lessonDate) return { status: "unknown", lessonDate: null, deadline: null };
 
-  // 「起計 14 日內」：包含課堂日共 14 個日曆日 → 最後一天為 lessonDate + 13
-  const deadline = new Date(lessonDate);
-  deadline.setDate(deadline.getDate() + 13);
-  deadline.setHours(23, 59, 59, 999);
+  // 規則：開課日前 14 天起開放，至開課日（含）截止
+  // windowStart = lessonDate - 14 days (00:00)
+  const windowStart = new Date(lessonDate);
+  windowStart.setDate(windowStart.getDate() - 14);
+  windowStart.setHours(0, 0, 0, 0);
+
+  // windowEnd = lessonDate (23:59:59.999)
+  const windowEnd = new Date(lessonDate);
+  windowEnd.setHours(23, 59, 59, 999);
 
   const now = new Date();
 
-  if (now < lessonDate) return { status: "not-started", deadline, lessonDate };
-  if (now <= deadline) {
-    const msLeft = deadline.getTime() - now.getTime();
+  if (now < windowStart) return { status: "not-started", lessonDate, windowStart, windowEnd };
+  if (now <= windowEnd) {
+    const msLeft = windowEnd.getTime() - now.getTime();
     const daysLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
-    return { status: "open", daysLeft, deadline, lessonDate };
+    return { status: "open", daysLeft, lessonDate, windowStart, windowEnd };
   }
-  return { status: "closed", deadline, lessonDate };
+  return { status: "closed", lessonDate, windowStart, windowEnd };
 }
 
 function normalizePosts(rows, likedIds = new Set()) {
@@ -391,21 +396,20 @@ function CourseCard({ course, progress, isExpanded, onToggleExpand, onUpdateProg
       );
     }
 
-    // 🕒 未到課堂日（按規則：課堂日起計 14 日內才可完成）
+    // 🕒 未到開放期（開課前 14 天起才開放）
     if (qs.status === "not-started") {
       return (
-        <div className="space-y-2">
+        <div>
           <button type="button" disabled
             className="w-full h-9 rounded-full text-[12px] font-semibold border shadow-sm cursor-not-allowed"
             style={{ backgroundColor: "#F3F4F6", borderColor: "#E5E7EB", color: "#9CA3AF" }}>
             開始測驗
           </button>
-          <p className="text-[11px] text-gray-400 text-center">小測未開始</p>
         </div>
       );
     }
 
-    // 🔒 已過 14 日截止
+    // 🔒 已過開課日截止
     if (qs.status === "closed") {
       return (
         <div className="space-y-2">
@@ -419,7 +423,7 @@ function CourseCard({ course, progress, isExpanded, onToggleExpand, onUpdateProg
       );
     }
 
-    // 📝 開放中（課堂日起計 14 日內）
+    // 📝 開放中（開課前 14 天～開課日）
     return (
       <div className="space-y-3">
         {course.quizUrl ? (
