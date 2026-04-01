@@ -79,7 +79,7 @@ function isCompleteCourse(courseId, progress) {
   const attendDone   = progress.attendance?.type === "live" || progress.attendance?.type === "replay";
   return readingDone && quizDone && attendDone;
 }
-// ── Quiz open window (開課前 14 天) ────────────────────────
+// ── Time windows (依課程與下一節課) ────────────────────────
 function parseLessonDate(input) {
   const raw = String(input || "").trim();
   if (!raw) return null;
@@ -97,19 +97,28 @@ function parseLessonDate(input) {
   return new Date(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T00:00:00+08:00`);
 }
 
-function getQuizStatus(courseDate) {
-  const lessonDate = parseLessonDate(courseDate);
-  if (!lessonDate) return { status: "unknown", lessonDate: null, deadline: null };
+function getCourseWindowBoundaries(courseId) {
+  const idx = COURSES.findIndex((c) => c.id === courseId);
+  if (idx < 0) return { lessonDate: null, nextLessonDate: null };
 
-  // 規則：開課前 14 天起開放，開課後 14 天關閉
-  // windowStart = lessonDate - 14 days (00:00)
+  const lessonDate = parseLessonDate(COURSES[idx]?.date);
+  const nextLessonDate = parseLessonDate(COURSES[idx + 1]?.date);
+  return { lessonDate, nextLessonDate };
+}
+
+function getQuizStatus(courseId) {
+  const { lessonDate, nextLessonDate } = getCourseWindowBoundaries(courseId);
+  if (!lessonDate) return { status: "unknown", lessonDate: null, windowStart: null, windowEnd: null };
+
+  // 小測：開課前 14 天開放
   const windowStart = new Date(lessonDate);
   windowStart.setDate(windowStart.getDate() - 14);
   windowStart.setHours(0, 0, 0, 0);
 
-  // windowEnd = lessonDate + 14 days (23:59:59.999)
-  const windowEnd = new Date(lessonDate);
-  windowEnd.setDate(windowEnd.getDate() + 14);
+  // 小測：下一節課前一日關閉（若無下一節，沿用開課後 14 天）
+  const windowEnd = new Date(nextLessonDate || lessonDate);
+  if (nextLessonDate) windowEnd.setDate(windowEnd.getDate() - 1);
+  else windowEnd.setDate(windowEnd.getDate() + 14);
   windowEnd.setHours(23, 59, 59, 999);
 
   const now = new Date();
@@ -121,6 +130,26 @@ function getQuizStatus(courseDate) {
     return { status: "open", daysLeft, lessonDate, windowStart, windowEnd };
   }
   return { status: "closed", lessonDate, windowStart, windowEnd };
+}
+
+function getAttendanceStatus(courseId) {
+  const { lessonDate, nextLessonDate } = getCourseWindowBoundaries(courseId);
+  if (!lessonDate) return { status: "unknown", windowStart: null, windowEnd: null };
+
+  // 出席：課堂當日開放
+  const windowStart = new Date(lessonDate);
+  windowStart.setHours(0, 0, 0, 0);
+
+  // 出席：下一節課前一日關閉（若無下一節，沿用開課後 14 天）
+  const windowEnd = new Date(nextLessonDate || lessonDate);
+  if (nextLessonDate) windowEnd.setDate(windowEnd.getDate() - 1);
+  else windowEnd.setDate(windowEnd.getDate() + 14);
+  windowEnd.setHours(23, 59, 59, 999);
+
+  const now = new Date();
+  if (now < windowStart) return { status: "not-started", windowStart, windowEnd };
+  if (now <= windowEnd) return { status: "open", windowStart, windowEnd };
+  return { status: "closed", windowStart, windowEnd };
 }
 
 function normalizePosts(rows, likedIds = new Set()) {
@@ -371,7 +400,7 @@ function CourseCard({ course, progress, isExpanded, onToggleExpand, onUpdateProg
   </h4>
 
   {(() => {
-    const qs = getQuizStatus(course.date);
+    const qs = getQuizStatus(course.id);
 
     // ✅ 已完成
     if (isQuizDone) {
@@ -454,16 +483,30 @@ function CourseCard({ course, progress, isExpanded, onToggleExpand, onUpdateProg
                 <h4 className="text-xs font-semibold flex items-center gap-2 mb-2" style={{ color:theme.textMain }}><Users size={14} /> 出席紀錄</h4>
                 <div className="space-y-3">
                   <div className="flex gap-2">
-                    {["live","replay"].map((t) => {
-                      const active = progress?.attendance?.type === t;
-                      return (
-                        <button key={t} type="button" onClick={() => setAttendance(t)}
-                          className="flex-1 py-2 rounded-xl text-xs border flex items-center justify-center gap-2 transition-all"
-                          style={{ backgroundColor: active ? theme.accent : "white", borderColor: active ? theme.accent : "#E5E7EB", color: active ? "white" : theme.textMain }}>
-                          {t === "live" ? <><Users size={14}/> 已參加Zoom</> : <><PlayCircle size={14}/> 已觀看錄影</>}
-                        </button>
-                      );
-                    })}
+                    {(() => {
+                      const as = getAttendanceStatus(course.id);
+                      const attendanceLocked = as.status !== "open";
+                      return ["live","replay"].map((t) => {
+                        const active = progress?.attendance?.type === t;
+                        return (
+                          <button key={t} type="button" onClick={() => setAttendance(t)} disabled={attendanceLocked}
+                            className="flex-1 py-2 rounded-xl text-xs border flex items-center justify-center gap-2 transition-all disabled:cursor-not-allowed"
+                            style={{
+                              backgroundColor: attendanceLocked
+                                ? "#F3F4F6"
+                                : active ? theme.accent : "white",
+                              borderColor: attendanceLocked
+                                ? "#E5E7EB"
+                                : active ? theme.accent : "#E5E7EB",
+                              color: attendanceLocked
+                                ? "#9CA3AF"
+                                : active ? "white" : theme.textMain,
+                            }}>
+                            {t === "live" ? <><Users size={14}/> 已參加Zoom</> : <><PlayCircle size={14}/> 已觀看錄影</>}
+                          </button>
+                        );
+                      });
+                    })()}
                   </div>
                   {youtubeEmbedUrl ? (
                     <div className="w-full aspect-video rounded-2xl overflow-hidden border border-gray-200 bg-black/5">
