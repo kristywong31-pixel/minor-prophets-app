@@ -136,9 +136,8 @@ function getAttendanceStatus(courseId) {
   const { lessonDate, nextLessonDate } = getCourseWindowBoundaries(courseId);
   if (!lessonDate) return { status: "unknown", windowStart: null, windowEnd: null };
 
-  // 出席：課堂當日開放
-  const windowStart = new Date(lessonDate);
-  windowStart.setHours(0, 0, 0, 0);
+  // 出席：課堂當天 20:00（香港時間）開放；lessonDate 為該日 00:00+08
+  const windowStart = new Date(lessonDate.getTime() + 20 * 60 * 60 * 1000);
 
   // 出席：下一節課前一日關閉（若無下一節，沿用開課後 14 天）
   const windowEnd = new Date(nextLessonDate || lessonDate);
