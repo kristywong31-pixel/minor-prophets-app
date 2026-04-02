@@ -119,6 +119,7 @@ function getQuizStatus(courseId) {
   const windowEnd = new Date(nextLessonDate || lessonDate);
   if (nextLessonDate) windowEnd.setDate(windowEnd.getDate() - 1);
   else windowEnd.setDate(windowEnd.getDate() + 14);
+  if (courseId === 1) windowEnd.setDate(windowEnd.getDate() + 14);
   windowEnd.setHours(23, 59, 59, 999);
 
   const now = new Date();
@@ -143,6 +144,7 @@ function getAttendanceStatus(courseId) {
   const windowEnd = new Date(nextLessonDate || lessonDate);
   if (nextLessonDate) windowEnd.setDate(windowEnd.getDate() - 1);
   else windowEnd.setDate(windowEnd.getDate() + 14);
+  if (courseId === 1) windowEnd.setDate(windowEnd.getDate() + 14);
   windowEnd.setHours(23, 59, 59, 999);
 
   const now = new Date();
