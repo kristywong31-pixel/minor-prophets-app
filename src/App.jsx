@@ -25,7 +25,7 @@ const COURSES = [
   { id:1,  date:"2026.03.05", title:"何西阿書", speaker:"蕭楚剛牧師", chapters:14, badgeKey:"hosea",
     quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSdjaoKXvSscCkUv8yQ-b4XsEAzyuQqtp3qoANB1TP4V9DKf3w/viewform?usp=send_form", youtubeLink:"https://youtu.be/UUorD_-WSBM" },
   { id:2,  date:"2026.04.02", title:"約珥書",   speaker:"梁浩威傳道", chapters:3,  badgeKey:"joel",
-    quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSeBMksdl9SIpXxFxHYiyD3Rsg9q_my42S9AeWzCSw1oS3F91Q/closedform", youtubeLink:"" },
+    quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSeBMksdl9SIpXxFxHYiyD3Rsg9q_my42S9AeWzCSw1oS3F91Q/closedform", youtubeLink:"https://youtu.be/34vmdTslTWY" },
   { id:3,  date:"2026.05.07", title:"阿摩司書", speaker:"林凱倫傳道", chapters:9,  badgeKey:"amos",
     quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSdwGSlCBhG1wzj7sMhfVz_NjXC5157bd7f3MTMVI_OnnVu-1g/closedform", youtubeLink:"" },
   { id:4,  date:"2026.06.04", title:"約拿書",   speaker:"林素華傳道", chapters:4,  badgeKey:"jonah",
@@ -332,7 +332,9 @@ function CourseCard({ course, progress, isExpanded, onToggleExpand, onUpdateProg
   const isAttendanceDone = progress?.attendance?.type === "live" || progress?.attendance?.type === "replay";
   const isComplete       = readingProgress === 100 && isQuizDone && isAttendanceDone;
   const isStarted        = chaptersDone > 0 || isQuizDone || isAttendanceDone;
-  const youtubeEmbedUrl  = toYouTubeEmbedUrl(course.youtubeLink);
+  const youtubeEmbedUrl  = toYouTubeEmbedUrl(
+    course.youtubeLink || (course.id === 2 ? "https://youtu.be/34vmdTslTWY" : "")
+  );
 
   let statusColor = theme.gray;
   let statusIcon  = <Circle size={18} />;
