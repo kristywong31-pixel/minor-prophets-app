@@ -79,6 +79,27 @@ function isCompleteCourse(courseId, progress) {
   const attendDone   = progress.attendance?.type === "live" || progress.attendance?.type === "replay";
   return readingDone && quizDone && attendDone;
 }
+
+function isReadingComplete(courseId, progress) {
+  const course = COURSES.find((c) => c.id === courseId);
+  if (!course || !progress) return false;
+  return (progress.chapters?.length || 0) === course.chapters;
+}
+
+function isQuizComplete(progress) {
+  return progress?.quizScore != null;
+}
+
+async function insertCommunityPost(userId, content, badgeCourseId = null) {
+  const payload = { user_id: userId, content };
+  if (badgeCourseId != null) payload.badge_course_id = badgeCourseId;
+  const { data, error } = await supabase.from("community_posts")
+    .insert([payload])
+    .select("id, content, created_at, likes_count, badge_course_id, app_users(id, name, note, avatar_url, avatar_color)")
+    .single();
+  if (error) { console.error("Community post:", error); return null; }
+  return normalizePosts([data])[0];
+}
 // ── Time windows (依課程與下一節課) ────────────────────────
 function parseLessonDate(input) {
   const raw = String(input || "").trim();
@@ -682,23 +703,29 @@ export default function App() {
   // ── Update progress ────────────────────────────────────
   const updateProgress = async (courseId, prog) => {
     if (!user) return;
+    const prevProg = progressByUser[courseId] || {};
     setProgressByUser((p) => ({ ...p, [courseId]: prog }));
     if (prog.quizScore != null) setQuizCompletion((p) => ({ ...p, [courseId]: true }));
 
     const course = COURSES.find((c) => c.id === courseId);
-    const wasComplete = progressByUser[courseId] && isCompleteCourse(courseId, progressByUser[courseId]);
+    const wasComplete = isCompleteCourse(courseId, prevProg);
     const nowComplete = isCompleteCourse(courseId, prog);
+    const readingJustDone = course && isReadingComplete(courseId, prog) && !isReadingComplete(courseId, prevProg);
+    const quizJustDone = course && isQuizComplete(prog) && !isQuizComplete(prevProg);
 
+    const communityPosts = [];
+    if (readingJustDone) communityPosts.push({ content: `已閱讀《${course.title}》！` });
+    if (quizJustDone) communityPosts.push({ content: `已完成《${course.title}》的小測！` });
     if (course && nowComplete && !wasComplete) {
       setShowBadgeAlert(course.title);
-      // Auto-post badge announcement
+      communityPosts.push({ content: `剛剛完成《${course.title}》並解鎖徽章！`, badgeCourseId: course.id });
+    }
+
+    for (const post of communityPosts) {
       try {
-        const { data: bp } = await supabase.from("community_posts")
-          .insert([{ user_id: user.id, content: `剛剛完成《${course.title}》並解鎖徽章！`, badge_course_id: course.id }])
-          .select("id, content, created_at, likes_count, badge_course_id, app_users(id, name, note, avatar_url, avatar_color)")
-          .single();
-        if (bp) setPosts((p) => [normalizePosts([bp])[0], ...p]);
-      } catch (e) { console.error("Badge post:", e); }
+        const created = await insertCommunityPost(user.id, post.content, post.badgeCourseId ?? null);
+        if (created) setPosts((p) => [created, ...p]);
+      } catch (e) { console.error("Community post:", e); }
     }
 
     try {
