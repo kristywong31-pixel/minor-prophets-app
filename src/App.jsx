@@ -179,7 +179,43 @@ function getCourseWindowBoundaries(courseId) {
   return { lessonDate, nextLessonDate };
 }
 
+// 臨時一日開放小測完成（何西阿書、約珥書）：香港時間當日 00:00–23:59，翌日自動關閉
+const QUIZ_ONE_DAY_GRACE = {
+  courseIds: [1, 2],
+  openDateHK: "2026-05-20",
+};
+
+function getHongKongDateString(date = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Hong_Kong",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function getQuizOneDayGraceStatus(courseId) {
+  if (!QUIZ_ONE_DAY_GRACE.courseIds.includes(courseId)) return null;
+  if (getHongKongDateString() !== QUIZ_ONE_DAY_GRACE.openDateHK) return null;
+
+  const { lessonDate, nextLessonDate } = getCourseWindowBoundaries(courseId);
+  const windowStart = new Date(`${QUIZ_ONE_DAY_GRACE.openDateHK}T00:00:00+08:00`);
+  const windowEnd = new Date(`${QUIZ_ONE_DAY_GRACE.openDateHK}T23:59:59.999+08:00`);
+  const now = new Date();
+
+  if (now < windowStart) return { status: "not-started", lessonDate, windowStart, windowEnd, temporaryGrace: true };
+  if (now <= windowEnd) {
+    const msLeft = windowEnd.getTime() - now.getTime();
+    const daysLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
+    return { status: "open", daysLeft, lessonDate, windowStart, windowEnd, temporaryGrace: true };
+  }
+  return null;
+}
+
 function getQuizStatus(courseId) {
+  const grace = getQuizOneDayGraceStatus(courseId);
+  if (grace) return grace;
+
   const { lessonDate, nextLessonDate } = getCourseWindowBoundaries(courseId);
   if (!lessonDate) return { status: "unknown", lessonDate: null, windowStart: null, windowEnd: null };
 
