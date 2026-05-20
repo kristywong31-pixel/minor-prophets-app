@@ -90,15 +90,67 @@ function isQuizComplete(progress) {
   return progress?.quizScore != null;
 }
 
-async function insertCommunityPost(userId, content, badgeCourseId = null) {
-  const payload = { user_id: userId, content };
+function buildCommunityPost(user, row, likedIds = new Set()) {
+  return {
+    id: row.id,
+    userId: user.id,
+    author: user.name,
+    content: row.content || "",
+    note: user.note || "",
+    likes: row.likes_count ?? 0,
+    isLiked: likedIds.has(row.id),
+    time: formatPostDate(row.created_at),
+    createdAt: row.created_at,
+    avatarColor: user.avatarColor,
+    avatarUrl: user.avatarUrl,
+    badge: row.badge_course_id ? (COURSES.find((c) => c.id === row.badge_course_id)?.title || null) : null,
+  };
+}
+
+async function communityPostExists(userId, content) {
+  const { data, error } = await supabase
+    .from("community_posts")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("content", content)
+    .limit(1);
+  if (error) { console.error("Community post check:", error); return false; }
+  return (data || []).length > 0;
+}
+
+async function publishCommunityPost(user, content, badgeCourseId = null) {
+  if (await communityPostExists(user.id, content)) return null;
+
+  const payload = { user_id: user.id, content };
   if (badgeCourseId != null) payload.badge_course_id = badgeCourseId;
+
   const { data, error } = await supabase.from("community_posts")
     .insert([payload])
-    .select("id, content, created_at, likes_count, badge_course_id, app_users(id, name, note, avatar_url, avatar_color)")
+    .select("id, content, created_at, badge_course_id")
     .single();
   if (error) { console.error("Community post:", error); return null; }
-  return normalizePosts([data])[0];
+  return buildCommunityPost(user, { ...data, likes_count: 0 });
+}
+
+async function syncMilestonePosts(user, progressMap) {
+  const created = [];
+  for (const course of COURSES) {
+    const prog = progressMap[course.id];
+    if (!prog) continue;
+    if (isReadingComplete(course.id, prog)) {
+      const post = await publishCommunityPost(user, `已閱讀《${course.title}》！`);
+      if (post) created.push(post);
+    }
+    if (isQuizComplete(prog)) {
+      const post = await publishCommunityPost(user, `已完成《${course.title}》的小測！`);
+      if (post) created.push(post);
+    }
+    if (isCompleteCourse(course.id, prog)) {
+      const post = await publishCommunityPost(user, `剛剛完成《${course.title}》並解鎖徽章！`, course.id);
+      if (post) created.push(post);
+    }
+  }
+  return created;
 }
 // ── Time windows (依課程與下一節課) ────────────────────────
 function parseLessonDate(input) {
@@ -636,6 +688,21 @@ export default function App() {
         if (r.quiz_score != null) qc[r.course_id] = true;
       });
       setProgressByUser(map); setQuizCompletion(qc);
+      const backfilled = await syncMilestonePosts(user, map);
+      if (!alive) return;
+      if (backfilled.length) {
+        const [postsRes, likesRes] = await Promise.all([
+          supabase.from("community_posts")
+            .select("id, content, created_at, likes_count, badge_course_id, app_users(id, name, note, avatar_url, avatar_color)")
+            .order("created_at", { ascending: false }),
+          supabase.from("post_likes").select("post_id").eq("user_id", user.id),
+        ]);
+        if (!alive) return;
+        if (!postsRes.error) {
+          const likedIds = new Set((likesRes.data || []).map((l) => l.post_id));
+          setPosts(normalizePosts(postsRes.data || [], likedIds));
+        }
+      }
     })();
     return () => { alive = false; };
   }, [user]);
@@ -703,8 +770,11 @@ export default function App() {
   // ── Update progress ────────────────────────────────────
   const updateProgress = async (courseId, prog) => {
     if (!user) return;
-    const prevProg = progressByUser[courseId] || {};
-    setProgressByUser((p) => ({ ...p, [courseId]: prog }));
+    let prevProg = {};
+    setProgressByUser((p) => {
+      prevProg = p[courseId] || {};
+      return { ...p, [courseId]: prog };
+    });
     if (prog.quizScore != null) setQuizCompletion((p) => ({ ...p, [courseId]: true }));
 
     const course = COURSES.find((c) => c.id === courseId);
@@ -722,10 +792,8 @@ export default function App() {
     }
 
     for (const post of communityPosts) {
-      try {
-        const created = await insertCommunityPost(user.id, post.content, post.badgeCourseId ?? null);
-        if (created) setPosts((p) => [created, ...p]);
-      } catch (e) { console.error("Community post:", e); }
+      const created = await publishCommunityPost(user, post.content, post.badgeCourseId ?? null);
+      if (created) setPosts((p) => [created, ...p]);
     }
 
     try {
