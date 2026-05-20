@@ -243,23 +243,9 @@ function getQuizStatus(courseId) {
 }
 
 function getAttendanceStatus(courseId) {
-  const { lessonDate, nextLessonDate } = getCourseWindowBoundaries(courseId);
-  if (!lessonDate) return { status: "unknown", windowStart: null, windowEnd: null };
-
-  // 出席：課堂當天 20:00（香港時間）開放；lessonDate 為該日 00:00+08
-  const windowStart = new Date(lessonDate.getTime() + 20 * 60 * 60 * 1000);
-
-  // 出席：下一節課前一日關閉（若無下一節，沿用開課後 14 天）
-  const windowEnd = new Date(nextLessonDate || lessonDate);
-  if (nextLessonDate) windowEnd.setDate(windowEnd.getDate() - 1);
-  else windowEnd.setDate(windowEnd.getDate() + 14);
-  if (courseId === 1) windowEnd.setDate(windowEnd.getDate() + 14);
-  windowEnd.setHours(23, 59, 59, 999);
-
-  const now = new Date();
-  if (now < windowStart) return { status: "not-started", windowStart, windowEnd };
-  if (now <= windowEnd) return { status: "open", windowStart, windowEnd };
-  return { status: "closed", windowStart, windowEnd };
+  void courseId;
+  // 出席紀錄：永久開放
+  return { status: "open" };
 }
 
 function normalizePosts(rows, likedIds = new Set()) {
