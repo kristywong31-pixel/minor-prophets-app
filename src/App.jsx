@@ -29,7 +29,7 @@ const COURSES = [
   { id:3,  date:"2026.05.07", title:"阿摩司書", speaker:"林凱倫傳道", chapters:9,  badgeKey:"amos",
     quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSdwGSlCBhG1wzj7sMhfVz_NjXC5157bd7f3MTMVI_OnnVu-1g/closedform", youtubeLink:"https://youtu.be/sP5dhieRf0k" },
   { id:4,  date:"2026.06.04", title:"約拿書",   speaker:"林素華傳道", chapters:4,  badgeKey:"jonah",
-    quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSfmJ2HxVbtyG1C8gzKiNHx_sHuHPlH3xNHMI0DpDAd3R8oitw/closedform", youtubeLink:"" },
+    quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSfmJ2HxVbtyG1C8gzKiNHx_sHuHPlH3xNHMI0DpDAd3R8oitw/closedform", youtubeLink:"https://youtu.be/mQOPvRdDClU" },
   { id:5,  date:"2026.07.02", title:"彌迦書",   speaker:"徐天睿弟兄", chapters:7,  badgeKey:"micah",
     quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSdGtw2tbu7JtuKVe5kvWx4x-o1B7VOy0o8Xlwn5-S90GaboSQ/closedform", youtubeLink:"" },
   { id:6,  date:"2026.08.06", title:"那鴻書",   speaker:"冼浚瑋弟兄", chapters:3,  badgeKey:"nahum",
