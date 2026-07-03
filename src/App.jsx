@@ -179,42 +179,28 @@ function getCourseWindowBoundaries(courseId) {
   return { lessonDate, nextLessonDate };
 }
 
-// 臨時一日開放小測完成（何西阿書、約珥書）：香港時間當日 00:00–23:59，翌日自動關閉
-const QUIZ_ONE_DAY_GRACE = {
-  courseIds: [1, 2],
-  openDateHK: "2026-05-20",
+// 臨時 24 小時全面開放小測及出席紀錄，逾期後自動恢復原本規則
+const TEMP_ALL_OPEN_24H = {
+  startAt: "2026-07-03T12:03:00+08:00",
+  endAt: "2026-07-04T12:03:00+08:00",
 };
 
-function getHongKongDateString(date = new Date()) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Hong_Kong",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
+function isTemporaryAllOpenActive(now = new Date()) {
+  const start = new Date(TEMP_ALL_OPEN_24H.startAt);
+  const end = new Date(TEMP_ALL_OPEN_24H.endAt);
+  return now >= start && now <= end;
 }
 
-function getQuizOneDayGraceStatus(courseId) {
-  if (!QUIZ_ONE_DAY_GRACE.courseIds.includes(courseId)) return null;
-  if (getHongKongDateString() !== QUIZ_ONE_DAY_GRACE.openDateHK) return null;
-
-  const { lessonDate, nextLessonDate } = getCourseWindowBoundaries(courseId);
-  const windowStart = new Date(`${QUIZ_ONE_DAY_GRACE.openDateHK}T00:00:00+08:00`);
-  const windowEnd = new Date(`${QUIZ_ONE_DAY_GRACE.openDateHK}T23:59:59.999+08:00`);
+function getTemporaryAllOpenQuizStatus() {
+  const end = new Date(TEMP_ALL_OPEN_24H.endAt);
   const now = new Date();
-
-  if (now < windowStart) return { status: "not-started", lessonDate, windowStart, windowEnd, temporaryGrace: true };
-  if (now <= windowEnd) {
-    const msLeft = windowEnd.getTime() - now.getTime();
-    const daysLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
-    return { status: "open", daysLeft, lessonDate, windowStart, windowEnd, temporaryGrace: true };
-  }
-  return null;
+  const msLeft = end.getTime() - now.getTime();
+  const daysLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
+  return { status: "open", daysLeft, temporaryGrace: true };
 }
 
 function getQuizStatus(courseId) {
-  const grace = getQuizOneDayGraceStatus(courseId);
-  if (grace) return grace;
+  if (isTemporaryAllOpenActive()) return getTemporaryAllOpenQuizStatus();
 
   const { lessonDate, nextLessonDate } = getCourseWindowBoundaries(courseId);
   if (!lessonDate) return { status: "unknown", lessonDate: null, windowStart: null, windowEnd: null };
@@ -243,9 +229,25 @@ function getQuizStatus(courseId) {
 }
 
 function getAttendanceStatus(courseId) {
-  void courseId;
-  // 出席紀錄：永久開放
-  return { status: "open" };
+  if (isTemporaryAllOpenActive()) return { status: "open" };
+
+  const { lessonDate, nextLessonDate } = getCourseWindowBoundaries(courseId);
+  if (!lessonDate) return { status: "unknown", windowStart: null, windowEnd: null };
+
+  // 出席：課堂當天 20:00（香港時間）開放；lessonDate 為該日 00:00+08
+  const windowStart = new Date(lessonDate.getTime() + 20 * 60 * 60 * 1000);
+
+  // 出席：下一節課前一日關閉（若無下一節，沿用開課後 14 天）
+  const windowEnd = new Date(nextLessonDate || lessonDate);
+  if (nextLessonDate) windowEnd.setDate(windowEnd.getDate() - 1);
+  else windowEnd.setDate(windowEnd.getDate() + 14);
+  if (courseId === 1) windowEnd.setDate(windowEnd.getDate() + 14);
+  windowEnd.setHours(23, 59, 59, 999);
+
+  const now = new Date();
+  if (now < windowStart) return { status: "not-started", windowStart, windowEnd };
+  if (now <= windowEnd) return { status: "open", windowStart, windowEnd };
+  return { status: "closed", windowStart, windowEnd };
 }
 
 function normalizePosts(rows, likedIds = new Set()) {
