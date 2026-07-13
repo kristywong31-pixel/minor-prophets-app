@@ -31,7 +31,7 @@ const COURSES = [
   { id:4,  date:"2026.06.04", title:"約拿書",   speaker:"林素華傳道", chapters:4,  badgeKey:"jonah",
     quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSfmJ2HxVbtyG1C8gzKiNHx_sHuHPlH3xNHMI0DpDAd3R8oitw/closedform", youtubeLink:"https://youtu.be/mQOPvRdDClU" },
   { id:5,  date:"2026.07.02", title:"彌迦書",   speaker:"徐天睿弟兄", chapters:7,  badgeKey:"micah",
-    quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSdGtw2tbu7JtuKVe5kvWx4x-o1B7VOy0o8Xlwn5-S90GaboSQ/closedform", youtubeLink:"" },
+    quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSdGtw2tbu7JtuKVe5kvWx4x-o1B7VOy0o8Xlwn5-S90GaboSQ/closedform", youtubeLink:"https://youtu.be/81GQLj8R2BY" },
   { id:6,  date:"2026.08.06", title:"那鴻書",   speaker:"冼浚瑋弟兄", chapters:3,  badgeKey:"nahum",
     quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSeuDay0xYrMkrvQTbt71R2MnRmJV0EuANxy8FIPqG2yepBpDQ/closedform", youtubeLink:"" },
   { id:7,  date:"2026.09.03", title:"哈巴谷書", speaker:"梁浩威傳道", chapters:3,  badgeKey:"habakkuk",
