@@ -181,8 +181,8 @@ function getCourseWindowBoundaries(courseId) {
 
 // 臨時 24 小時全面開放小測及出席紀錄，逾期後自動恢復原本規則
 const TEMP_ALL_OPEN_24H = {
-  startAt: "2026-07-03T12:03:00+08:00",
-  endAt: "2026-07-04T12:03:00+08:00",
+  startAt: "2026-07-22T14:29:00+08:00",
+  endAt: "2026-07-23T14:29:00+08:00",
 };
 
 function isTemporaryAllOpenActive(now = new Date()) {
