@@ -179,29 +179,7 @@ function getCourseWindowBoundaries(courseId) {
   return { lessonDate, nextLessonDate };
 }
 
-// 臨時 24 小時全面開放小測及出席紀錄，逾期後自動恢復原本規則
-const TEMP_ALL_OPEN_24H = {
-  startAt: "2026-08-31T23:30:00+08:00",
-  endAt: "2026-09-01T23:30:00+08:00",
-};
-
-function isTemporaryAllOpenActive(now = new Date()) {
-  const start = new Date(TEMP_ALL_OPEN_24H.startAt);
-  const end = new Date(TEMP_ALL_OPEN_24H.endAt);
-  return now >= start && now <= end;
-}
-
-function getTemporaryAllOpenQuizStatus() {
-  const end = new Date(TEMP_ALL_OPEN_24H.endAt);
-  const now = new Date();
-  const msLeft = end.getTime() - now.getTime();
-  const daysLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
-  return { status: "open", daysLeft, temporaryGrace: true };
-}
-
 function getQuizStatus(courseId) {
-  if (isTemporaryAllOpenActive()) return getTemporaryAllOpenQuizStatus();
-
   const { lessonDate, nextLessonDate } = getCourseWindowBoundaries(courseId);
   if (!lessonDate) return { status: "unknown", lessonDate: null, windowStart: null, windowEnd: null };
 
@@ -229,8 +207,6 @@ function getQuizStatus(courseId) {
 }
 
 function getAttendanceStatus(courseId) {
-  if (isTemporaryAllOpenActive()) return { status: "open" };
-
   const { lessonDate, nextLessonDate } = getCourseWindowBoundaries(courseId);
   if (!lessonDate) return { status: "unknown", windowStart: null, windowEnd: null };
 
