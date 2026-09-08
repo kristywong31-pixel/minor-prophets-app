@@ -35,7 +35,7 @@ const COURSES = [
   { id:6,  date:"2026.08.06", title:"那鴻書",   speaker:"冼浚瑋弟兄", chapters:3,  badgeKey:"nahum",
     quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSeuDay0xYrMkrvQTbt71R2MnRmJV0EuANxy8FIPqG2yepBpDQ/closedform", youtubeLink:"https://youtu.be/ws21G8wb4RA" },
   { id:7,  date:"2026.09.03", title:"哈巴谷書", speaker:"梁浩威傳道", chapters:3,  badgeKey:"habakkuk",
-    quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSes72P2yUiuGLv88ER9Ihl_9WxFh2m07Kzq5fBJ7yL6eNv9OA/closedform", youtubeLink:"" },
+    quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSes72P2yUiuGLv88ER9Ihl_9WxFh2m07Kzq5fBJ7yL6eNv9OA/closedform", youtubeLink:"https://youtu.be/LIf5e2InSnA" },
   { id:8,  date:"2026.10.08", title:"西番亞書", speaker:"林凱倫傳道", chapters:3,  badgeKey:"zephaniah",
     quizUrl:"https://docs.google.com/forms/d/e/1FAIpQLSdgeo78ClO7pRtT4uUtFD9G-_249DYKmsohzSJGvj4SnpIX6A/closedform", youtubeLink:"" },
   { id:9,  date:"2026.11.05", title:"哈該書",   speaker:"林素華傳道", chapters:2,  badgeKey:"haggai",
@@ -179,7 +179,12 @@ function getCourseWindowBoundaries(courseId) {
   return { lessonDate, nextLessonDate };
 }
 
+// 全面開放小測與出席紀錄（設為 false 即恢復原本時間規則）
+const FORCE_ALL_UNLOCKED = true;
+
 function getQuizStatus(courseId) {
+  if (FORCE_ALL_UNLOCKED) return { status: "open" };
+
   const { lessonDate, nextLessonDate } = getCourseWindowBoundaries(courseId);
   if (!lessonDate) return { status: "unknown", lessonDate: null, windowStart: null, windowEnd: null };
 
@@ -207,6 +212,8 @@ function getQuizStatus(courseId) {
 }
 
 function getAttendanceStatus(courseId) {
+  if (FORCE_ALL_UNLOCKED) return { status: "open" };
+
   const { lessonDate, nextLessonDate } = getCourseWindowBoundaries(courseId);
   if (!lessonDate) return { status: "unknown", windowStart: null, windowEnd: null };
 
@@ -546,9 +553,11 @@ function CourseCard({ course, progress, isExpanded, onToggleExpand, onUpdateProg
           style={{ backgroundColor: "white", borderColor: "#E5E7EB", color: theme.textMain }}>
           已完成小測
         </button>
-        <p className="text-[11px] text-orange-600 text-center">
-          剩餘 {qs.daysLeft} 日
-        </p>
+        {qs.daysLeft != null && (
+          <p className="text-[11px] text-orange-600 text-center">
+            剩餘 {qs.daysLeft} 日
+          </p>
+        )}
       </div>
     );
   })()}
